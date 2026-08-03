@@ -1,0 +1,17 @@
+{
+  "name": "kindred-backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "@anthropic-ai/sdk": "^0.39.0",
+    "openai": "^4.78.0",
+    "@google/generative-ai": "^0.21.0"
+  }
+}
