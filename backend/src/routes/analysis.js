@@ -29,46 +29,44 @@ function computeComposite(assessments, selfDomains) {
 router.post('/:partnerId', async (req, res) => {
   try {
     const partnerId = req.params.partnerId;
-    const partner = db.prepare('SELECT * FROM partners WHERE id = ? AND deleted_at IS NULL').get(partnerId);
+    const partner = await db.get('SELECT * FROM partners WHERE id = ? AND deleted_at IS NULL', partnerId);
     if (!partner) return res.status(404).json({ error: 'Partner not found' });
 
-    const partnerDomains = db.prepare(
-      'SELECT domain, answer FROM partner_domains WHERE partner_id = ?'
-    ).all(partnerId);
+    const partnerDomains = await db.all('SELECT domain, answer FROM partner_domains WHERE partner_id = ?', partnerId);
+    const selfDomains = await db.all('SELECT domain, answer, priority FROM self_profile_domains');
 
-    const selfDomains = db.prepare(
-      'SELECT domain, answer, priority FROM self_profile_domains'
-    ).all();
-
-    const activeProvider = db.prepare("SELECT value FROM settings WHERE key = 'active_provider'").get()?.value || 'anthropic';
+    const activeProvider = (await db.get("SELECT value FROM settings WHERE key = 'active_provider'"))?.value || 'anthropic';
     const provider = getProvider(activeProvider);
 
     const prompt = buildPrompt(partner, partnerDomains, selfDomains);
     const result = await provider.analyze(prompt);
 
-    const tx = db.transaction(() => {
-      const run = db.prepare(
-        'INSERT INTO analysis_runs (partner_id, provider, model, summary, composite_score) VALUES (?, ?, ?, ?, ?)'
-      ).run(partnerId, activeProvider, provider.model, result.summary, 0);
-
-      const insertAssessment = db.prepare(
-        'INSERT INTO domain_assessments (run_id, partner_id, domain, tag, score, reasoning) VALUES (?, ?, ?, ?, ?, ?)'
+    const tx = await db.transaction();
+    try {
+      const run = await tx.run(
+        'INSERT INTO analysis_runs (partner_id, provider, model, summary, composite_score) VALUES (?, ?, ?, ?, ?)',
+        partnerId, activeProvider, provider.model, result.summary, 0
       );
+      const runId = run.lastInsertRowid;
 
       const assessments = [];
       for (const a of result.assessments) {
-        insertAssessment.run(run.lastInsertRowid, partnerId, a.domain, a.tag, a.score, a.reasoning);
+        await tx.run(
+          'INSERT INTO domain_assessments (run_id, partner_id, domain, tag, score, reasoning) VALUES (?, ?, ?, ?, ?, ?)',
+          runId, partnerId, a.domain, a.tag, a.score, a.reasoning
+        );
         assessments.push(a);
       }
 
       const composite = computeComposite(assessments, selfDomains);
-      db.prepare('UPDATE analysis_runs SET composite_score = ? WHERE id = ?').run(composite, run.lastInsertRowid);
+      await tx.run('UPDATE analysis_runs SET composite_score = ? WHERE id = ?', composite, runId);
+      await tx.commit();
 
-      return { runId: run.lastInsertRowid, composite };
-    });
-
-    const { runId, composite } = tx();
-    res.json({ runId, composite, summary: result.summary, assessments: result.assessments });
+      res.json({ runId, composite, summary: result.summary, assessments: result.assessments });
+    } catch (e) {
+      await tx.rollback();
+      throw e;
+    }
   } catch (err) {
     console.error('Analysis error:', err);
     res.status(500).json({ error: err.message });

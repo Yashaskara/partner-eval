@@ -12,38 +12,33 @@ const DOMAIN_LABELS = {
   history: 'Previous relationships',
 };
 
-router.get('/', (req, res) => {
-  const questions = db.prepare('SELECT * FROM prep_questions ORDER BY priority ASC, id ASC').all();
+router.get('/', async (req, res) => {
+  const questions = await db.all('SELECT * FROM prep_questions ORDER BY priority ASC, id ASC');
   res.json(questions);
 });
 
 router.post('/generate', async (req, res) => {
   try {
-    const selfDomains = db.prepare(
-      'SELECT domain, answer, priority FROM self_profile_domains'
-    ).all();
-
+    const selfDomains = await db.all('SELECT domain, answer, priority FROM self_profile_domains');
     const hasContent = selfDomains.some(d => d.answer.trim().length > 0);
     if (!hasContent) return res.status(400).json({ error: 'Fill in your self-profile first' });
 
-    const activeProvider = db.prepare("SELECT value FROM settings WHERE key = 'active_provider'").get()?.value || 'anthropic';
+    const activeProvider = (await db.get("SELECT value FROM settings WHERE key = 'active_provider'"))?.value || 'anthropic';
     const provider = getProvider(activeProvider);
 
     const prompt = buildPrepPrompt(selfDomains);
     const result = await provider.analyze(prompt);
 
-    const tx = db.transaction(() => {
-      db.prepare('DELETE FROM prep_questions').run();
-      const insert = db.prepare(
-        'INSERT INTO prep_questions (domain, priority, question, guide_aligned, guide_watch, guide_flag) VALUES (?, ?, ?, ?, ?, ?)'
-      );
-      for (const q of result.questions) {
-        insert.run(q.domain, q.priority, q.question, q.guide_aligned, q.guide_watch, q.guide_flag);
-      }
-    });
-    tx();
+    const stmts = [{ sql: 'DELETE FROM prep_questions', args: [] }];
+    for (const q of result.questions) {
+      stmts.push({
+        sql: 'INSERT INTO prep_questions (domain, priority, question, guide_aligned, guide_watch, guide_flag) VALUES (?, ?, ?, ?, ?, ?)',
+        args: [q.domain, q.priority, q.question, q.guide_aligned, q.guide_watch, q.guide_flag],
+      });
+    }
+    await db.batch(stmts);
 
-    const questions = db.prepare('SELECT * FROM prep_questions ORDER BY priority ASC, id ASC').all();
+    const questions = await db.all('SELECT * FROM prep_questions ORDER BY priority ASC, id ASC');
     res.json(questions);
   } catch (err) {
     console.error('Prep question generation error:', err);
@@ -51,8 +46,8 @@ router.post('/generate', async (req, res) => {
   }
 });
 
-router.delete('/', (req, res) => {
-  db.prepare('DELETE FROM prep_questions').run();
+router.delete('/', async (req, res) => {
+  await db.run('DELETE FROM prep_questions');
   res.json({ ok: true });
 });
 

@@ -3,7 +3,7 @@ import db, { DOMAINS } from '../db.js';
 
 const router = Router();
 
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const { status, includeDeleted } = req.query;
   let sql = 'SELECT * FROM partners WHERE deleted_at IS NULL';
   const params = [];
@@ -15,121 +15,116 @@ router.get('/', (req, res) => {
     sql = 'SELECT * FROM partners WHERE deleted_at IS NOT NULL';
   }
   sql += ' ORDER BY updated_at DESC';
-  const partners = db.prepare(sql).all(...params);
+  const partners = await db.all(sql, ...params);
 
-  const enriched = partners.map(p => {
-    const domains = db.prepare(
-      'SELECT domain, answer FROM partner_domains WHERE partner_id = ?'
-    ).all(p.id);
-    const latestRun = db.prepare(
-      'SELECT * FROM analysis_runs WHERE partner_id = ? ORDER BY created_at DESC LIMIT 1'
-    ).get(p.id);
+  const enriched = [];
+  for (const p of partners) {
+    const domains = await db.all('SELECT domain, answer FROM partner_domains WHERE partner_id = ?', p.id);
+    const latestRun = await db.get('SELECT * FROM analysis_runs WHERE partner_id = ? ORDER BY created_at DESC LIMIT 1', p.id);
     const assessments = latestRun
-      ? db.prepare('SELECT * FROM domain_assessments WHERE run_id = ?').all(latestRun.id)
+      ? await db.all('SELECT * FROM domain_assessments WHERE run_id = ?', latestRun.id)
       : [];
-    const notes = db.prepare(
-      'SELECT * FROM positives_negatives WHERE partner_id = ? ORDER BY created_at DESC'
-    ).all(p.id);
-
-    const selfProfile = db.prepare('SELECT updated_at FROM self_profile WHERE id = 1').get();
+    const notes = await db.all('SELECT * FROM positives_negatives WHERE partner_id = ? ORDER BY created_at DESC', p.id);
+    const selfProfile = await db.get('SELECT updated_at FROM self_profile WHERE id = 1');
     const stale = latestRun && selfProfile?.updated_at && latestRun.created_at < selfProfile.updated_at;
-
-    return { ...p, domains, latestRun, assessments, notes, stale };
-  });
+    enriched.push({ ...p, domains, latestRun, assessments, notes, stale });
+  }
 
   res.json(enriched);
 });
 
-router.get('/:id', (req, res) => {
-  const partner = db.prepare('SELECT * FROM partners WHERE id = ? AND deleted_at IS NULL').get(req.params.id);
+router.get('/:id', async (req, res) => {
+  const partner = await db.get('SELECT * FROM partners WHERE id = ? AND deleted_at IS NULL', req.params.id);
   if (!partner) return res.status(404).json({ error: 'Not found' });
 
-  const domains = db.prepare('SELECT domain, answer FROM partner_domains WHERE partner_id = ?').all(partner.id);
-  const runs = db.prepare('SELECT * FROM analysis_runs WHERE partner_id = ? ORDER BY created_at DESC').all(partner.id);
+  const domains = await db.all('SELECT domain, answer FROM partner_domains WHERE partner_id = ?', partner.id);
+  const runs = await db.all('SELECT * FROM analysis_runs WHERE partner_id = ? ORDER BY created_at DESC', partner.id);
   const latestRun = runs[0];
   const assessments = latestRun
-    ? db.prepare('SELECT * FROM domain_assessments WHERE run_id = ?').all(latestRun.id)
+    ? await db.all('SELECT * FROM domain_assessments WHERE run_id = ?', latestRun.id)
     : [];
-  const notes = db.prepare('SELECT * FROM positives_negatives WHERE partner_id = ? ORDER BY created_at DESC').all(partner.id);
-
-  const selfProfile = db.prepare('SELECT updated_at FROM self_profile WHERE id = 1').get();
+  const notes = await db.all('SELECT * FROM positives_negatives WHERE partner_id = ? ORDER BY created_at DESC', partner.id);
+  const selfProfile = await db.get('SELECT updated_at FROM self_profile WHERE id = 1');
   const stale = latestRun && selfProfile?.updated_at && latestRun.created_at < selfProfile.updated_at;
 
   res.json({ ...partner, domains, runs, assessments, notes, stale });
 });
 
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const { name, source, status, dob, notes } = req.body;
   if (!name) return res.status(400).json({ error: 'Name is required' });
 
-  const result = db.prepare(
-    'INSERT INTO partners (name, source, status, dob, notes) VALUES (?, ?, ?, ?, ?)'
-  ).run(name, source || '', status || 'active', dob || null, notes || '');
+  const result = await db.run(
+    'INSERT INTO partners (name, source, status, dob, notes) VALUES (?, ?, ?, ?, ?)',
+    name, source || '', status || 'active', dob || null, notes || ''
+  );
 
-  for (const domain of DOMAINS) {
-    db.prepare(
-      'INSERT INTO partner_domains (partner_id, domain, answer) VALUES (?, ?, ?)'
-    ).run(result.lastInsertRowid, domain, '');
-  }
+  await db.batch(
+    DOMAINS.map(domain => ({
+      sql: 'INSERT INTO partner_domains (partner_id, domain, answer) VALUES (?, ?, ?)',
+      args: [result.lastInsertRowid, domain, ''],
+    }))
+  );
 
   res.status(201).json({ id: result.lastInsertRowid });
 });
 
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   const { name, source, status, dob, notes } = req.body;
-  db.prepare(
+  await db.run(
     `UPDATE partners SET name = COALESCE(?, name), source = COALESCE(?, source),
      status = COALESCE(?, status), dob = COALESCE(?, dob), notes = COALESCE(?, notes),
-     updated_at = datetime('now') WHERE id = ? AND deleted_at IS NULL`
-  ).run(name, source, status, dob, notes, req.params.id);
+     updated_at = datetime('now') WHERE id = ? AND deleted_at IS NULL`,
+    name, source, status, dob, notes, req.params.id
+  );
   res.json({ ok: true });
 });
 
-router.put('/:id/domains', (req, res) => {
+router.put('/:id/domains', async (req, res) => {
   const { domains } = req.body;
   if (!Array.isArray(domains)) return res.status(400).json({ error: 'domains array required' });
 
-  const upsert = db.prepare(
-    `INSERT INTO partner_domains (partner_id, domain, answer) VALUES (?, ?, ?)
-     ON CONFLICT(partner_id, domain) DO UPDATE SET answer = excluded.answer, updated_at = datetime('now')`
-  );
-  const tx = db.transaction(() => {
-    for (const { domain, answer } of domains) {
-      upsert.run(req.params.id, domain, answer || '');
-    }
-    db.prepare("UPDATE partners SET updated_at = datetime('now') WHERE id = ?").run(req.params.id);
+  const stmts = domains.map(({ domain, answer }) => ({
+    sql: `INSERT INTO partner_domains (partner_id, domain, answer) VALUES (?, ?, ?)
+     ON CONFLICT(partner_id, domain) DO UPDATE SET answer = excluded.answer, updated_at = datetime('now')`,
+    args: [req.params.id, domain, answer || ''],
+  }));
+  stmts.push({
+    sql: "UPDATE partners SET updated_at = datetime('now') WHERE id = ?",
+    args: [req.params.id],
   });
-  tx();
+  await db.batch(stmts);
   res.json({ ok: true });
 });
 
-router.delete('/:id', (req, res) => {
-  db.prepare("UPDATE partners SET deleted_at = datetime('now') WHERE id = ?").run(req.params.id);
+router.delete('/:id', async (req, res) => {
+  await db.run("UPDATE partners SET deleted_at = datetime('now') WHERE id = ?", req.params.id);
   res.json({ ok: true });
 });
 
-router.post('/:id/restore', (req, res) => {
-  db.prepare('UPDATE partners SET deleted_at = NULL WHERE id = ?').run(req.params.id);
+router.post('/:id/restore', async (req, res) => {
+  await db.run('UPDATE partners SET deleted_at = NULL WHERE id = ?', req.params.id);
   res.json({ ok: true });
 });
 
-router.delete('/:id/permanent', (req, res) => {
-  db.prepare('DELETE FROM partners WHERE id = ?').run(req.params.id);
+router.delete('/:id/permanent', async (req, res) => {
+  await db.run('DELETE FROM partners WHERE id = ?', req.params.id);
   res.json({ ok: true });
 });
 
-router.post('/:id/notes', (req, res) => {
+router.post('/:id/notes', async (req, res) => {
   const { type, text } = req.body;
   if (!type || !text) return res.status(400).json({ error: 'type and text required' });
-  const result = db.prepare(
-    'INSERT INTO positives_negatives (partner_id, type, text) VALUES (?, ?, ?)'
-  ).run(req.params.id, type, text);
+  const result = await db.run(
+    'INSERT INTO positives_negatives (partner_id, type, text) VALUES (?, ?, ?)',
+    req.params.id, type, text
+  );
   res.status(201).json({ id: result.lastInsertRowid });
 });
 
-router.delete('/:partnerId/notes/:noteId', (req, res) => {
-  db.prepare('DELETE FROM positives_negatives WHERE id = ? AND partner_id = ?')
-    .run(req.params.noteId, req.params.partnerId);
+router.delete('/:partnerId/notes/:noteId', async (req, res) => {
+  await db.run('DELETE FROM positives_negatives WHERE id = ? AND partner_id = ?',
+    req.params.noteId, req.params.partnerId);
   res.json({ ok: true });
 });
 

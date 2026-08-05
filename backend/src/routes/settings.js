@@ -29,8 +29,8 @@ function maskKey(key) {
   return '····' + key.slice(-4);
 }
 
-router.get('/', (req, res) => {
-  const activeProvider = db.prepare("SELECT value FROM settings WHERE key = 'active_provider'").get()?.value || 'anthropic';
+router.get('/', async (req, res) => {
+  const activeProvider = (await db.get("SELECT value FROM settings WHERE key = 'active_provider'"))?.value || 'anthropic';
 
   const providers = Object.entries(PROVIDERS).map(([id, p]) => {
     const rawKey = process.env[p.envKey];
@@ -45,20 +45,20 @@ router.get('/', (req, res) => {
     };
   });
 
-  const provenance = db.prepare(
+  const provenance = await db.all(
     `SELECT ar.model, COUNT(da.id) as count, MAX(da.created_at) as recent
      FROM domain_assessments da
      JOIN analysis_runs ar ON da.run_id = ar.id
      GROUP BY ar.model ORDER BY recent DESC`
-  ).all();
+  );
 
   res.json({ activeProvider, providers, provenance });
 });
 
-router.put('/provider', (req, res) => {
+router.put('/provider', async (req, res) => {
   const { provider } = req.body;
   if (!PROVIDERS[provider]) return res.status(400).json({ error: 'Invalid provider' });
-  db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('active_provider', ?)").run(provider);
+  await db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('active_provider', ?)", provider);
   res.json({ ok: true });
 });
 
