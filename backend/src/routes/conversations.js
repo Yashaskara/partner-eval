@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import db, { DOMAINS } from '../db.js';
 import { getProvider } from '../llm/index.js';
+import { checkTokenLimit } from '../middleware/checkTokenLimit.js';
+import { logUsage } from '../llm/meter.js';
 
 const router = Router();
 
@@ -12,8 +14,17 @@ const DOMAIN_LABELS = {
   social: 'Friends & social life', history: 'Previous relationships',
 };
 
+async function getActiveProvider(userId) {
+  const userPref = await db.get(
+    "SELECT value FROM user_settings WHERE user_id = ? AND key = 'active_provider'", userId
+  );
+  return userPref?.value
+    || (await db.get("SELECT value FROM settings WHERE key = 'active_provider'"))?.value
+    || 'anthropic';
+}
+
 router.get('/', async (req, res) => {
-  const profileId = Number(req.query.profileId) || 1;
+  const profileId = req.profileId;
   const conversations = await db.all(
     'SELECT * FROM conversations WHERE profile_id = ? ORDER BY started_at DESC',
     profileId
@@ -22,15 +33,17 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  const { profileId = 1, domain } = req.body;
+  const { domain } = req.body;
   const result = await db.run(
     'INSERT INTO conversations (profile_id, domain) VALUES (?, ?)',
-    profileId, domain || null
+    req.profileId, domain || null
   );
   res.status(201).json({ id: result.lastInsertRowid });
 });
 
 router.get('/:id/messages', async (req, res) => {
+  const conversation = await db.get('SELECT * FROM conversations WHERE id = ? AND profile_id = ?', req.params.id, req.profileId);
+  if (!conversation) return res.status(404).json({ error: 'Not found' });
   const messages = await db.all(
     'SELECT * FROM conversation_messages WHERE conversation_id = ? ORDER BY created_at',
     req.params.id
@@ -38,13 +51,13 @@ router.get('/:id/messages', async (req, res) => {
   res.json(messages);
 });
 
-router.post('/:id/message', async (req, res) => {
+router.post('/:id/message', checkTokenLimit, async (req, res) => {
   try {
     const conversationId = req.params.id;
     const { content } = req.body;
     if (!content) return res.status(400).json({ error: 'content required' });
 
-    const conversation = await db.get('SELECT * FROM conversations WHERE id = ?', conversationId);
+    const conversation = await db.get('SELECT * FROM conversations WHERE id = ? AND profile_id = ?', conversationId, req.profileId);
     if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
 
     await db.run(
@@ -78,9 +91,10 @@ Be warm, perceptive, and natural. Ask follow-up questions that go deeper. If the
 
     const messages = history.map(m => ({ role: m.role, content: m.content }));
 
-    const activeProvider = (await db.get("SELECT value FROM settings WHERE key = 'active_provider'"))?.value || 'anthropic';
+    const activeProvider = await getActiveProvider(req.user.id);
     const provider = getProvider(activeProvider);
-    const reply = await provider.chat(system, messages);
+    const { result: reply, usage } = await provider.chat(system, messages);
+    await logUsage(req.user.id, activeProvider, provider.model, 'conversation:chat', usage);
 
     await db.run(
       'INSERT INTO conversation_messages (conversation_id, role, content) VALUES (?, ?, ?)',
@@ -94,10 +108,10 @@ Be warm, perceptive, and natural. Ask follow-up questions that go deeper. If the
   }
 });
 
-router.post('/:id/classify', async (req, res) => {
+router.post('/:id/classify', checkTokenLimit, async (req, res) => {
   try {
     const conversationId = req.params.id;
-    const conversation = await db.get('SELECT * FROM conversations WHERE id = ?', conversationId);
+    const conversation = await db.get('SELECT * FROM conversations WHERE id = ? AND profile_id = ?', conversationId, req.profileId);
     if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
 
     const messages = await db.all(
@@ -107,7 +121,7 @@ router.post('/:id/classify', async (req, res) => {
 
     const transcript = messages.map(m => `${m.role}: ${m.content}`).join('\n');
 
-    const activeProvider = (await db.get("SELECT value FROM settings WHERE key = 'active_provider'"))?.value || 'anthropic';
+    const activeProvider = await getActiveProvider(req.user.id);
     const provider = getProvider(activeProvider);
 
     const prompt = `Analyze this conversation and determine which life domains were discussed or revealed preferences about.
@@ -125,7 +139,8 @@ Return a JSON object:
 
 Only include domains where the conversation revealed meaningful new information or a shift in preferences. Return ONLY the JSON.`;
 
-    const result = await provider.analyze(prompt);
+    const { result, usage } = await provider.analyze(prompt);
+    await logUsage(req.user.id, activeProvider, provider.model, 'conversation:classify', usage);
     res.json(result);
   } catch (err) {
     console.error('Classify error:', err);
@@ -133,7 +148,7 @@ Only include domains where the conversation revealed meaningful new information 
   }
 });
 
-router.post('/:id/update-preferences', async (req, res) => {
+router.post('/:id/update-preferences', checkTokenLimit, async (req, res) => {
   try {
     const conversationId = req.params.id;
     const { domains: targetDomains } = req.body;
@@ -141,7 +156,7 @@ router.post('/:id/update-preferences', async (req, res) => {
       return res.status(400).json({ error: 'domains array required' });
     }
 
-    const conversation = await db.get('SELECT * FROM conversations WHERE id = ?', conversationId);
+    const conversation = await db.get('SELECT * FROM conversations WHERE id = ? AND profile_id = ?', conversationId, req.profileId);
     if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
 
     const messages = await db.all(
@@ -159,7 +174,7 @@ router.post('/:id/update-preferences', async (req, res) => {
       currentSummaries[domain] = row;
     }
 
-    const activeProvider = (await db.get("SELECT value FROM settings WHERE key = 'active_provider'"))?.value || 'anthropic';
+    const activeProvider = await getActiveProvider(req.user.id);
     const provider = getProvider(activeProvider);
 
     let prompt = `Based on a recent conversation, update the user's profile summaries for the following domains.
@@ -188,7 +203,8 @@ Current summaries:
 
 If a domain's summary doesn't need to change based on this conversation, omit it. Use first person ("I want...", "I value..."). Return ONLY the JSON.`;
 
-    const result = await provider.analyze(prompt);
+    const { result, usage } = await provider.analyze(prompt);
+    await logUsage(req.user.id, activeProvider, provider.model, 'conversation:update', usage);
 
     await db.run(
       "UPDATE conversations SET summary = ?, ended_at = datetime('now') WHERE id = ?",
@@ -207,7 +223,7 @@ router.post('/:id/apply-updates', async (req, res) => {
   const { updates } = req.body;
   if (!Array.isArray(updates)) return res.status(400).json({ error: 'updates array required' });
 
-  const conversation = await db.get('SELECT * FROM conversations WHERE id = ?', conversationId);
+  const conversation = await db.get('SELECT * FROM conversations WHERE id = ? AND profile_id = ?', conversationId, req.profileId);
   if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
 
   const stmts = [];

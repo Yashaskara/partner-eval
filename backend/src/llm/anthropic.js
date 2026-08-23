@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 
 export class AnthropicProvider {
   constructor() {
-    this.model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20241022';
+    this.model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20250514';
     this.client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   }
 
@@ -14,7 +14,13 @@ export class AnthropicProvider {
     });
 
     const text = response.content[0].text;
-    return JSON.parse(text);
+    return {
+      result: JSON.parse(text),
+      usage: {
+        input_tokens: response.usage?.input_tokens || 0,
+        output_tokens: response.usage?.output_tokens || 0,
+      },
+    };
   }
 
   async chat(system, messages) {
@@ -24,6 +30,12 @@ export class AnthropicProvider {
       system,
       messages,
     });
-    return response.content[0].text;
+    return {
+      result: response.content[0].text,
+      usage: {
+        input_tokens: response.usage?.input_tokens || 0,
+        output_tokens: response.usage?.output_tokens || 0,
+      },
+    };
   }
 }

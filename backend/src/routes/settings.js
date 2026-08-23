@@ -6,7 +6,7 @@ const router = Router();
 const PROVIDERS = {
   anthropic: {
     name: 'Anthropic',
-    defaultModel: 'claude-sonnet-4-5-20241022',
+    defaultModel: 'claude-sonnet-4-5-20250514',
     envKey: 'ANTHROPIC_API_KEY',
     envModel: 'ANTHROPIC_MODEL',
   },
@@ -30,7 +30,14 @@ function maskKey(key) {
 }
 
 router.get('/', async (req, res) => {
-  const activeProvider = (await db.get("SELECT value FROM settings WHERE key = 'active_provider'"))?.value || 'anthropic';
+  const userId = req.user.id;
+  const userPref = await db.get(
+    "SELECT value FROM user_settings WHERE user_id = ? AND key = 'active_provider'",
+    userId
+  );
+  const activeProvider = userPref?.value
+    || (await db.get("SELECT value FROM settings WHERE key = 'active_provider'"))?.value
+    || 'anthropic';
 
   const providers = Object.entries(PROVIDERS).map(([id, p]) => {
     const rawKey = process.env[p.envKey];
@@ -58,7 +65,10 @@ router.get('/', async (req, res) => {
 router.put('/provider', async (req, res) => {
   const { provider } = req.body;
   if (!PROVIDERS[provider]) return res.status(400).json({ error: 'Invalid provider' });
-  await db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('active_provider', ?)", provider);
+  await db.run(
+    "INSERT INTO user_settings (user_id, key, value) VALUES (?, 'active_provider', ?) ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value",
+    req.user.id, provider
+  );
   res.json({ ok: true });
 });
 

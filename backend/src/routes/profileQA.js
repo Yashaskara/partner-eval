@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import db, { DOMAINS } from '../db.js';
 import { getProvider } from '../llm/index.js';
+import { checkTokenLimit } from '../middleware/checkTokenLimit.js';
+import { logUsage } from '../llm/meter.js';
 
 const router = Router();
 
@@ -12,9 +14,18 @@ const DOMAIN_LABELS = {
   social: 'Friends & social life', history: 'Previous relationships',
 };
 
+async function getActiveProvider(userId) {
+  const userPref = await db.get(
+    "SELECT value FROM user_settings WHERE user_id = ? AND key = 'active_provider'", userId
+  );
+  return userPref?.value
+    || (await db.get("SELECT value FROM settings WHERE key = 'active_provider'"))?.value
+    || 'anthropic';
+}
+
 router.get('/questions/:domain', async (req, res) => {
   const { domain } = req.params;
-  const profileId = Number(req.query.profileId) || 1;
+  const profileId = req.profileId;
 
   const domainQuestions = await db.all(
     'SELECT * FROM profile_questions WHERE domain = ? ORDER BY sort_order',
@@ -57,7 +68,7 @@ router.get('/questions/:domain', async (req, res) => {
 });
 
 router.get('/progress', async (req, res) => {
-  const profileId = Number(req.query.profileId) || 1;
+  const profileId = req.profileId;
 
   const progress = {};
   for (const domain of DOMAINS) {
@@ -101,7 +112,7 @@ router.get('/progress', async (req, res) => {
 });
 
 router.get('/cross-cutting', async (req, res) => {
-  const profileId = Number(req.query.profileId) || 1;
+  const profileId = req.profileId;
 
   const completedDomains = [];
   for (const domain of DOMAINS) {
@@ -146,7 +157,8 @@ router.get('/cross-cutting', async (req, res) => {
 });
 
 router.post('/answer', async (req, res) => {
-  const { profileId = 1, questionId, selectedOptionIndex, selectedOptionText, freeText } = req.body;
+  const profileId = req.profileId;
+  const { questionId, selectedOptionIndex, selectedOptionText, freeText } = req.body;
   if (questionId == null) return res.status(400).json({ error: 'questionId required' });
 
   await db.run(
@@ -163,10 +175,10 @@ router.post('/answer', async (req, res) => {
   res.json({ ok: true });
 });
 
-router.post('/summarize/:domain', async (req, res) => {
+router.post('/summarize/:domain', checkTokenLimit, async (req, res) => {
   try {
     const { domain } = req.params;
-    const profileId = Number(req.body.profileId) || 1;
+    const profileId = req.profileId;
 
     if (!DOMAINS.includes(domain)) return res.status(400).json({ error: 'Invalid domain' });
 
@@ -191,7 +203,7 @@ router.post('/summarize/:domain', async (req, res) => {
     const allAnswers = [...domainAnswers, ...crossCuttingAnswers];
     if (allAnswers.length === 0) return res.status(400).json({ error: 'No answers to summarize' });
 
-    const activeProvider = (await db.get("SELECT value FROM settings WHERE key = 'active_provider'"))?.value || 'anthropic';
+    const activeProvider = await getActiveProvider(req.user.id);
     const provider = getProvider(activeProvider);
 
     let prompt = `You are analyzing someone's answers about the "${DOMAIN_LABELS[domain]}" domain of their life to build their relationship profile.
@@ -220,7 +232,8 @@ Priority guide:
 
 Return ONLY the JSON object.`;
 
-    const result = await provider.analyze(prompt);
+    const { result, usage } = await provider.analyze(prompt);
+    await logUsage(req.user.id, activeProvider, provider.model, 'profileQA:summarize', usage);
 
     res.json({
       summary: result.summary,
@@ -235,7 +248,8 @@ Return ONLY the JSON object.`;
 
 router.post('/save-summary/:domain', async (req, res) => {
   const { domain } = req.params;
-  const { profileId = 1, summary, priority } = req.body;
+  const profileId = req.profileId;
+  const { summary, priority } = req.body;
 
   if (!DOMAINS.includes(domain)) return res.status(400).json({ error: 'Invalid domain' });
 

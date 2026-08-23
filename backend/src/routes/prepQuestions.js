@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import db, { DOMAINS } from '../db.js';
 import { getProvider } from '../llm/index.js';
+import { checkTokenLimit } from '../middleware/checkTokenLimit.js';
+import { logUsage } from '../llm/meter.js';
 
 const router = Router();
 
@@ -12,8 +14,17 @@ const DOMAIN_LABELS = {
   history: 'Previous relationships',
 };
 
+async function getActiveProvider(userId) {
+  const userPref = await db.get(
+    "SELECT value FROM user_settings WHERE user_id = ? AND key = 'active_provider'", userId
+  );
+  return userPref?.value
+    || (await db.get("SELECT value FROM settings WHERE key = 'active_provider'"))?.value
+    || 'anthropic';
+}
+
 router.get('/', async (req, res) => {
-  const profileId = Number(req.query.profileId) || 1;
+  const profileId = req.profileId;
   const questions = await db.all(
     'SELECT * FROM prep_questions WHERE profile_id = ? ORDER BY priority ASC, id ASC',
     profileId
@@ -21,20 +32,21 @@ router.get('/', async (req, res) => {
   res.json(questions);
 });
 
-router.post('/generate', async (req, res) => {
+router.post('/generate', checkTokenLimit, async (req, res) => {
   try {
-    const profileId = Number(req.body.profileId) || 1;
+    const profileId = req.profileId;
     const selfDomains = await db.all(
       'SELECT domain, answer, priority FROM profile_domains WHERE profile_id = ?', profileId
     );
     const hasContent = selfDomains.some(d => d.answer.trim().length > 0);
     if (!hasContent) return res.status(400).json({ error: 'Fill in your self-profile first' });
 
-    const activeProvider = (await db.get("SELECT value FROM settings WHERE key = 'active_provider'"))?.value || 'anthropic';
+    const activeProvider = await getActiveProvider(req.user.id);
     const provider = getProvider(activeProvider);
 
     const prompt = buildPrepPrompt(selfDomains);
-    const result = await provider.analyze(prompt);
+    const { result, usage } = await provider.analyze(prompt);
+    await logUsage(req.user.id, activeProvider, provider.model, 'prep:generate', usage);
 
     const stmts = [{ sql: 'DELETE FROM prep_questions WHERE profile_id = ?', args: [profileId] }];
     for (const q of result.questions) {
@@ -56,7 +68,7 @@ router.post('/generate', async (req, res) => {
 });
 
 router.delete('/', async (req, res) => {
-  const profileId = Number(req.query.profileId) || 1;
+  const profileId = req.profileId;
   await db.run('DELETE FROM prep_questions WHERE profile_id = ?', profileId);
   res.json({ ok: true });
 });

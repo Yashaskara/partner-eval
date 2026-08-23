@@ -14,7 +14,13 @@ export class OpenAIProvider {
     });
 
     const text = response.choices[0].message.content;
-    return JSON.parse(text);
+    return {
+      result: JSON.parse(text),
+      usage: {
+        input_tokens: response.usage?.prompt_tokens || 0,
+        output_tokens: response.usage?.completion_tokens || 0,
+      },
+    };
   }
 
   async chat(system, messages) {
@@ -22,6 +28,12 @@ export class OpenAIProvider {
       model: this.model,
       messages: [{ role: 'system', content: system }, ...messages],
     });
-    return response.choices[0].message.content;
+    return {
+      result: response.choices[0].message.content,
+      usage: {
+        input_tokens: response.usage?.prompt_tokens || 0,
+        output_tokens: response.usage?.completion_tokens || 0,
+      },
+    };
   }
 }

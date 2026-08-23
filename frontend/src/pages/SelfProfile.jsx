@@ -76,14 +76,14 @@ function ProfileTab({ domainMap, profile, filledCount, p1Count, onSaved }) {
 
   function startGuidedSetup() {
     const unfilled = DOMAINS.find(d => {
-      const p = progress?.domains?.[d.key];
+      const p = progress?.[d.key];
       return !p || p.answered < p.total;
     });
     setQaDomain(unfilled ? unfilled.key : DOMAINS[0].key);
   }
 
   function domainProgress(key) {
-    const p = progress?.domains?.[key];
+    const p = progress?.[key];
     if (!p) return null;
     return p;
   }

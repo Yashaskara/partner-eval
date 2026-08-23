@@ -15,6 +15,52 @@ const client = createClient({
 
 await client.execute('PRAGMA foreign_keys = ON');
 
+// --- better-auth tables (must exist before auth handler runs) ---
+await client.batch([
+  `CREATE TABLE IF NOT EXISTS "user" (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    emailVerified INTEGER NOT NULL DEFAULT 0,
+    image TEXT,
+    createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+    updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS "session" (
+    id TEXT PRIMARY KEY,
+    expiresAt TEXT NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+    updatedAt TEXT NOT NULL DEFAULT (datetime('now')),
+    ipAddress TEXT,
+    userAgent TEXT,
+    userId TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE
+  )`,
+  `CREATE TABLE IF NOT EXISTS "account" (
+    id TEXT PRIMARY KEY,
+    accountId TEXT NOT NULL,
+    providerId TEXT NOT NULL,
+    userId TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+    accessToken TEXT,
+    refreshToken TEXT,
+    idToken TEXT,
+    accessTokenExpiresAt TEXT,
+    refreshTokenExpiresAt TEXT,
+    scope TEXT,
+    password TEXT,
+    createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+    updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS "verification" (
+    id TEXT PRIMARY KEY,
+    identifier TEXT NOT NULL,
+    value TEXT NOT NULL,
+    expiresAt TEXT NOT NULL,
+    createdAt TEXT DEFAULT (datetime('now')),
+    updatedAt TEXT DEFAULT (datetime('now'))
+  )`,
+], 'write');
+
 await client.batch([
   // --- Profiles (was self_profile, now multi-profile) ---
   `CREATE TABLE IF NOT EXISTS profiles (
@@ -156,8 +202,36 @@ await client.batch([
     value TEXT NOT NULL
   )`,
 
+  `CREATE TABLE IF NOT EXISTS user_settings (
+    user_id TEXT NOT NULL,
+    key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    PRIMARY KEY (user_id, key)
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS allowlist (
+    email TEXT PRIMARY KEY,
+    added_at TEXT DEFAULT (datetime('now')),
+    added_by TEXT
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS llm_usage (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    model TEXT NOT NULL,
+    endpoint TEXT NOT NULL,
+    input_tokens INTEGER NOT NULL DEFAULT 0,
+    output_tokens INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS user_limits (
+    user_id TEXT PRIMARY KEY,
+    daily_token_limit INTEGER NOT NULL DEFAULT 100000
+  )`,
+
   `INSERT OR IGNORE INTO settings (key, value) VALUES ('active_provider', 'anthropic')`,
-  `INSERT OR IGNORE INTO profiles (id, name) VALUES (1, 'Default')`,
 ], 'write');
 
 const DOMAINS = [
@@ -165,13 +239,31 @@ const DOMAINS = [
   'children', 'intimacy', 'hobbies', 'health', 'social', 'history'
 ];
 
-await client.batch(
-  DOMAINS.map(d => ({
-    sql: 'INSERT OR IGNORE INTO profile_domains (profile_id, domain) VALUES (?, ?)',
-    args: [1, d],
-  })),
-  'write'
-);
+// Seed allowlisted emails
+const seedEmails = [
+  'kryj999@gmail.com',
+  'shivameera4@gmail.com',
+];
+if (process.env.ADMIN_EMAIL) {
+  seedEmails.push(process.env.ADMIN_EMAIL.toLowerCase().trim());
+}
+for (const email of [...new Set(seedEmails)]) {
+  await client.execute({
+    sql: 'INSERT OR IGNORE INTO allowlist (email, added_by) VALUES (?, ?)',
+    args: [email, 'system'],
+  });
+}
+
+// Idempotent ALTER TABLE migrations for user_id columns
+const alterMigrations = [
+  'ALTER TABLE profiles ADD COLUMN user_id TEXT',
+  'ALTER TABLE partners ADD COLUMN user_id TEXT',
+  'ALTER TABLE prep_questions ADD COLUMN user_id TEXT',
+  'ALTER TABLE conversations ADD COLUMN user_id TEXT',
+];
+for (const sql of alterMigrations) {
+  try { await client.execute(sql); } catch {}
+}
 
 function sanitize(args) {
   return args.map(a => a === undefined ? null : a);

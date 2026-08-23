@@ -1,11 +1,10 @@
 import { Router } from 'express';
 import db, { DOMAINS } from '../db.js';
-import { getProvider } from '../llm/index.js';
 
 const router = Router();
 
 router.get('/', async (req, res) => {
-  const profileId = Number(req.query.profileId) || 1;
+  const profileId = req.profileId;
   const profile = await db.get('SELECT * FROM profiles WHERE id = ?', profileId);
   const domains = await db.all(
     'SELECT domain, answer, priority, updated_at FROM profile_domains WHERE profile_id = ? ORDER BY rowid',
@@ -16,7 +15,8 @@ router.get('/', async (req, res) => {
 
 router.put('/domains/:domain', async (req, res) => {
   const { domain } = req.params;
-  const { answer, priority, profileId = 1 } = req.body;
+  const { answer, priority } = req.body;
+  const profileId = req.profileId;
 
   if (!DOMAINS.includes(domain)) return res.status(400).json({ error: 'Invalid domain' });
 
@@ -31,7 +31,8 @@ router.put('/domains/:domain', async (req, res) => {
 });
 
 router.put('/domains', async (req, res) => {
-  const { domains, profileId = 1 } = req.body;
+  const { domains } = req.body;
+  const profileId = req.profileId;
   if (!Array.isArray(domains)) return res.status(400).json({ error: 'domains array required' });
 
   const stmts = [];
@@ -49,7 +50,7 @@ router.put('/domains', async (req, res) => {
 });
 
 router.post('/reset', async (req, res) => {
-  const profileId = Number(req.body.profileId) || 1;
+  const profileId = req.profileId;
   const current = await db.all(
     'SELECT domain, answer, priority FROM profile_domains WHERE profile_id = ?', profileId
   );
@@ -68,7 +69,7 @@ router.post('/reset', async (req, res) => {
 });
 
 router.post('/restore', async (req, res) => {
-  const profileId = Number(req.body.profileId) || 1;
+  const profileId = req.profileId;
   const profile = await db.get('SELECT snapshot_json FROM profiles WHERE id = ?', profileId);
   if (!profile?.snapshot_json) return res.status(404).json({ error: 'No snapshot to restore' });
 

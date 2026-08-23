@@ -11,6 +11,7 @@ export default function Roster() {
   const [filter, setFilter] = useState('all');
   const [view, setView] = useState('grid');
   const [showAdd, setShowAdd] = useState(false);
+  const [selfDomains, setSelfDomains] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -18,21 +19,27 @@ export default function Roster() {
 
   async function load() {
     try {
-      const data = await api.partners.list();
+      const [data, profile] = await Promise.all([
+        api.partners.list(),
+        api.selfProfile.get(),
+      ]);
       setPartners(data);
+      setSelfDomains(profile.domains || []);
     } catch (e) { console.error(e); }
     setLoading(false);
   }
 
   function getComposite(p) {
     if (!p.assessments?.length) return null;
+    const priorityMap = {};
+    for (const d of selfDomains) priorityMap[d.domain] = d.priority;
     const scoreMap = {};
     for (const a of p.assessments) scoreMap[a.domain] = a.score;
     let num = 0, den = 0;
     for (const d of DOMAINS) {
       const s = scoreMap[d.key];
       if (s == null) continue;
-      const w = weight(2);
+      const w = weight(priorityMap[d.key] || 2);
       num += s * w;
       den += w;
     }

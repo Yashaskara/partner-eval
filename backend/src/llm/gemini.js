@@ -14,7 +14,14 @@ export class GeminiProvider {
 
     const result = await model.generateContent(prompt);
     const text = result.response.text();
-    return JSON.parse(text);
+    const meta = result.response.usageMetadata;
+    return {
+      result: JSON.parse(text),
+      usage: {
+        input_tokens: meta?.promptTokenCount || 0,
+        output_tokens: meta?.candidatesTokenCount || 0,
+      },
+    };
   }
 
   async chat(system, messages) {
@@ -26,6 +33,13 @@ export class GeminiProvider {
     const chat = model.startChat({ history, systemInstruction: system });
     const last = messages[messages.length - 1];
     const result = await chat.sendMessage(last.content);
-    return result.response.text();
+    const meta = result.response.usageMetadata;
+    return {
+      result: result.response.text(),
+      usage: {
+        input_tokens: meta?.promptTokenCount || 0,
+        output_tokens: meta?.candidatesTokenCount || 0,
+      },
+    };
   }
 }

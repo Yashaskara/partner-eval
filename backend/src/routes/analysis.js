@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import db, { DOMAINS } from '../db.js';
 import { getProvider } from '../llm/index.js';
+import { checkTokenLimit } from '../middleware/checkTokenLimit.js';
+import { logUsage } from '../llm/meter.js';
 
 const router = Router();
 
@@ -26,10 +28,19 @@ function computeComposite(assessments, selfDomains) {
   return den > 0 ? Math.round((num / den) * 10) / 10 : 0;
 }
 
-router.post('/:partnerId', async (req, res) => {
+async function getActiveProvider(userId) {
+  const userPref = await db.get(
+    "SELECT value FROM user_settings WHERE user_id = ? AND key = 'active_provider'", userId
+  );
+  return userPref?.value
+    || (await db.get("SELECT value FROM settings WHERE key = 'active_provider'"))?.value
+    || 'anthropic';
+}
+
+router.post('/:partnerId', checkTokenLimit, async (req, res) => {
   try {
     const partnerId = req.params.partnerId;
-    const partner = await db.get('SELECT * FROM partners WHERE id = ? AND deleted_at IS NULL', partnerId);
+    const partner = await db.get('SELECT * FROM partners WHERE id = ? AND user_id = ? AND deleted_at IS NULL', partnerId, req.user.id);
     if (!partner) return res.status(404).json({ error: 'Partner not found' });
 
     const partnerDomains = await db.all('SELECT domain, answer FROM partner_domains WHERE partner_id = ?', partnerId);
@@ -38,11 +49,12 @@ router.post('/:partnerId', async (req, res) => {
       partner.profile_id
     );
 
-    const activeProvider = (await db.get("SELECT value FROM settings WHERE key = 'active_provider'"))?.value || 'anthropic';
+    const activeProvider = await getActiveProvider(req.user.id);
     const provider = getProvider(activeProvider);
 
     const prompt = buildPrompt(partner, partnerDomains, selfDomains);
-    const result = await provider.analyze(prompt);
+    const { result, usage } = await provider.analyze(prompt);
+    await logUsage(req.user.id, activeProvider, provider.model, 'analysis:run', usage);
 
     const tx = await db.transaction();
     try {

@@ -23,13 +23,6 @@ export default function Compare() {
   }
 
   const cmpPartners = partners.filter(p => selected.includes(p.id));
-  const selfDomainPriorities = {};
-
-  useEffect(() => {
-    api.selfProfile.get().then(profile => {
-      for (const d of profile.domains) selfDomainPriorities[d.domain] = d.priority;
-    });
-  }, []);
 
   if (loading) return <div className="page" style={{ paddingTop: 120, textAlign: 'center' }}>Loading…</div>;
 

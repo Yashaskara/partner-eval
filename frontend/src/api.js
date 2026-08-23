@@ -3,9 +3,14 @@ const BASE = '/api';
 async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, {
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     ...options,
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
+  if (res.status === 401) {
+    window.location.href = '/login';
+    throw new Error('Not authenticated');
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error || 'Request failed');
@@ -41,7 +46,7 @@ export const api = {
     getProgress: () => request('/profile-qa/progress'),
     getCrossCutting: () => request('/profile-qa/cross-cutting'),
     submitAnswer: (data) => request('/profile-qa/answer', { method: 'POST', body: data }),
-    summarize: (domain, profileId = 1) => request(`/profile-qa/summarize/${domain}`, { method: 'POST', body: { profileId } }),
+    summarize: (domain) => request(`/profile-qa/summarize/${domain}`, { method: 'POST' }),
     saveSummary: (domain, data) => request(`/profile-qa/save-summary/${domain}`, { method: 'POST', body: data }),
   },
   conversations: {
@@ -64,5 +69,14 @@ export const api = {
   settings: {
     get: () => request('/settings'),
     setProvider: (provider) => request('/settings/provider', { method: 'PUT', body: { provider } }),
+  },
+  admin: {
+    getUsers: () => request('/admin/users'),
+    getUsage: () => request('/admin/usage'),
+    getUserUsage: (userId) => request(`/admin/usage/${userId}`),
+    getAllowlist: () => request('/admin/allowlist'),
+    addToAllowlist: (email) => request('/admin/allowlist', { method: 'POST', body: { email } }),
+    removeFromAllowlist: (email) => request(`/admin/allowlist/${encodeURIComponent(email)}`, { method: 'DELETE' }),
+    setUserLimit: (userId, dailyTokenLimit) => request(`/admin/user-limits/${userId}`, { method: 'PUT', body: { dailyTokenLimit } }),
   },
 };
