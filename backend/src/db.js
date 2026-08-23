@@ -38,6 +38,7 @@ await client.batch([
   )`,
   `CREATE TABLE IF NOT EXISTS "account" (
     id TEXT PRIMARY KEY,
+    issuer TEXT NOT NULL DEFAULT '',
     accountId TEXT NOT NULL,
     providerId TEXT NOT NULL,
     userId TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
@@ -260,6 +261,7 @@ const alterMigrations = [
   'ALTER TABLE partners ADD COLUMN user_id TEXT',
   'ALTER TABLE prep_questions ADD COLUMN user_id TEXT',
   'ALTER TABLE conversations ADD COLUMN user_id TEXT',
+  `ALTER TABLE "account" ADD COLUMN issuer TEXT NOT NULL DEFAULT ''`,
 ];
 for (const sql of alterMigrations) {
   try { await client.execute(sql); } catch {}
