@@ -3,6 +3,8 @@ import { api } from '../api.js';
 import { DOMAINS, PRIORITY_WORD } from '../domains.js';
 import DomainMark from '../components/DomainMark.jsx';
 import Dialog from '../components/Dialog.jsx';
+import DomainQA from '../components/DomainQA.jsx';
+import ProfileConversation from '../components/ProfileConversation.jsx';
 
 export default function SelfProfile() {
   const [tab, setTab] = useState('profile');
@@ -59,6 +61,32 @@ export default function SelfProfile() {
 
 function ProfileTab({ domainMap, profile, filledCount, p1Count, onSaved }) {
   const [editing, setEditing] = useState(null);
+  const [qaDomain, setQaDomain] = useState(null);
+  const [showConversation, setShowConversation] = useState(false);
+  const [progress, setProgress] = useState(null);
+
+  useEffect(() => { loadProgress(); }, []);
+
+  async function loadProgress() {
+    try {
+      const data = await api.profileQA.getProgress();
+      setProgress(data);
+    } catch (e) { console.error(e); }
+  }
+
+  function startGuidedSetup() {
+    const unfilled = DOMAINS.find(d => {
+      const p = progress?.domains?.[d.key];
+      return !p || p.answered < p.total;
+    });
+    setQaDomain(unfilled ? unfilled.key : DOMAINS[0].key);
+  }
+
+  function domainProgress(key) {
+    const p = progress?.domains?.[key];
+    if (!p) return null;
+    return p;
+  }
 
   return (
     <div>
@@ -67,20 +95,44 @@ function ProfileTab({ domainMap, profile, filledCount, p1Count, onSaved }) {
           Twelve domains · {p1Count} at first priority · {filledCount} filled
           {profile?.updated_at && ` · last edited ${new Date(profile.updated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}`}
         </span>
+        <span style={{ marginLeft: 'auto', display: 'flex', gap: 10, flex: 'none' }}>
+          <button className="btn btn-secondary" onClick={() => setShowConversation(true)} disabled={filledCount === 0}>
+            Refine via conversation
+          </button>
+          <button className="btn btn-primary" onClick={startGuidedSetup}>
+            Guided setup
+          </button>
+        </span>
       </div>
 
       <div style={{ borderTop: '1px solid var(--color-divider)' }}>
         {DOMAINS.map(d => {
           const data = domainMap[d.key] || { answer: '', priority: 2 };
+          const dp = domainProgress(d.key);
+          const pct = dp ? Math.round((dp.answered / dp.total) * 100) : 0;
+
           return (
-            <div key={d.key} className="k-row" style={{ display: 'grid', gridTemplateColumns: '200px 1fr 230px', gap: 30, padding: '20px 10px', borderBottom: '1px solid var(--color-divider)', alignItems: 'start', cursor: 'pointer' }} onClick={() => setEditing(d.key)}>
-              <div>
+            <div key={d.key} className="k-row" style={{ display: 'grid', gridTemplateColumns: '200px 1fr 230px', gap: 30, padding: '20px 10px', borderBottom: '1px solid var(--color-divider)', alignItems: 'start' }}>
+              <div style={{ cursor: 'pointer' }} onClick={() => setEditing(d.key)}>
                 <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 18 }}>{d.label}</div>
                 <div className="text-muted" style={{ fontSize: 11, marginTop: 3 }}>{d.hint}</div>
+                {dp && (
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ height: 3, background: 'var(--color-divider)', borderRadius: 2, width: 80 }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? 'var(--color-accent)' : 'var(--color-neutral-400)', borderRadius: 2, transition: 'width 0.3s' }} />
+                    </div>
+                    <span className="text-muted" style={{ fontSize: 10, marginTop: 2, display: 'block' }}>{dp.answered}/{dp.total} questions</span>
+                  </div>
+                )}
               </div>
-              <p style={{ fontSize: 13.5, lineHeight: 1.65, margin: 0, color: data.answer ? 'inherit' : 'var(--color-neutral-400)' }}>
-                {data.answer || 'Not filled in yet — click to edit'}
-              </p>
+              <div style={{ cursor: 'pointer' }} onClick={() => setEditing(d.key)}>
+                <p style={{ fontSize: 13.5, lineHeight: 1.65, margin: 0, color: data.answer ? 'inherit' : 'var(--color-neutral-400)' }}>
+                  {data.answer || 'Not filled in yet — click to edit'}
+                </p>
+                <button className="btn btn-ghost" style={{ marginTop: 6, fontSize: 12, padding: '2px 6px' }} onClick={e => { e.stopPropagation(); setQaDomain(d.key); }}>
+                  Answer questions
+                </button>
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'flex-end' }}>
                 <span className="text-muted" style={{ fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', textAlign: 'right' }}>{PRIORITY_WORD[data.priority]}</span>
                 <div className="seg" style={{ flex: 'none' }}>
@@ -111,6 +163,21 @@ function ProfileTab({ domainMap, profile, filledCount, p1Count, onSaved }) {
           current={domainMap[editing] || { answer: '', priority: 2 }}
           onClose={() => setEditing(null)}
           onSaved={() => { setEditing(null); onSaved(); }}
+        />
+      )}
+
+      {qaDomain && (
+        <DomainQA
+          domain={qaDomain}
+          onClose={() => setQaDomain(null)}
+          onComplete={() => { setQaDomain(null); loadProgress(); onSaved(); }}
+        />
+      )}
+
+      {showConversation && (
+        <ProfileConversation
+          onClose={() => setShowConversation(false)}
+          onUpdated={() => { setShowConversation(false); onSaved(); }}
         />
       )}
     </div>

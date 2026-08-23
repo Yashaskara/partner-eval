@@ -36,6 +36,23 @@ export const api = {
     reset: () => request('/self-profile/reset', { method: 'POST' }),
     restore: () => request('/self-profile/restore', { method: 'POST' }),
   },
+  profileQA: {
+    getQuestions: (domain) => request(`/profile-qa/questions/${domain}`),
+    getProgress: () => request('/profile-qa/progress'),
+    getCrossCutting: () => request('/profile-qa/cross-cutting'),
+    submitAnswer: (data) => request('/profile-qa/answer', { method: 'POST', body: data }),
+    summarize: (domain, profileId = 1) => request(`/profile-qa/summarize/${domain}`, { method: 'POST', body: { profileId } }),
+    saveSummary: (domain, data) => request(`/profile-qa/save-summary/${domain}`, { method: 'POST', body: data }),
+  },
+  conversations: {
+    list: () => request('/conversations'),
+    create: (data) => request('/conversations', { method: 'POST', body: data }),
+    getMessages: (id) => request(`/conversations/${id}/messages`),
+    sendMessage: (id, content) => request(`/conversations/${id}/message`, { method: 'POST', body: { content } }),
+    classify: (id) => request(`/conversations/${id}/classify`, { method: 'POST' }),
+    updatePreferences: (id, domains) => request(`/conversations/${id}/update-preferences`, { method: 'POST', body: { domains } }),
+    applyUpdates: (id, updates) => request(`/conversations/${id}/apply-updates`, { method: 'POST', body: { updates } }),
+  },
   analysis: {
     run: (partnerId) => request(`/analysis/${partnerId}`, { method: 'POST' }),
   },

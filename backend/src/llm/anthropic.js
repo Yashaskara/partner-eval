@@ -16,4 +16,14 @@ export class AnthropicProvider {
     const text = response.content[0].text;
     return JSON.parse(text);
   }
+
+  async chat(system, messages) {
+    const response = await this.client.messages.create({
+      model: this.model,
+      max_tokens: 2048,
+      system,
+      messages,
+    });
+    return response.content[0].text;
+  }
 }

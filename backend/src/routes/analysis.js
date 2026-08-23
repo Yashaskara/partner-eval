@@ -33,7 +33,10 @@ router.post('/:partnerId', async (req, res) => {
     if (!partner) return res.status(404).json({ error: 'Partner not found' });
 
     const partnerDomains = await db.all('SELECT domain, answer FROM partner_domains WHERE partner_id = ?', partnerId);
-    const selfDomains = await db.all('SELECT domain, answer, priority FROM self_profile_domains');
+    const selfDomains = await db.all(
+      'SELECT domain, answer, priority FROM profile_domains WHERE profile_id = ?',
+      partner.profile_id
+    );
 
     const activeProvider = (await db.get("SELECT value FROM settings WHERE key = 'active_provider'"))?.value || 'anthropic';
     const provider = getProvider(activeProvider);

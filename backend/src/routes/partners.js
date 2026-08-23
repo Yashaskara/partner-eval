@@ -5,14 +5,15 @@ const router = Router();
 
 router.get('/', async (req, res) => {
   const { status, includeDeleted } = req.query;
-  let sql = 'SELECT * FROM partners WHERE deleted_at IS NULL';
-  const params = [];
+  const profileId = Number(req.query.profileId) || 1;
+  let sql = 'SELECT * FROM partners WHERE profile_id = ? AND deleted_at IS NULL';
+  const params = [profileId];
   if (status && status !== 'all') {
     sql += ' AND status = ?';
     params.push(status);
   }
   if (includeDeleted === 'true') {
-    sql = 'SELECT * FROM partners WHERE deleted_at IS NOT NULL';
+    sql = 'SELECT * FROM partners WHERE profile_id = ? AND deleted_at IS NOT NULL';
   }
   sql += ' ORDER BY updated_at DESC';
   const partners = await db.all(sql, ...params);
@@ -25,8 +26,8 @@ router.get('/', async (req, res) => {
       ? await db.all('SELECT * FROM domain_assessments WHERE run_id = ?', latestRun.id)
       : [];
     const notes = await db.all('SELECT * FROM positives_negatives WHERE partner_id = ? ORDER BY created_at DESC', p.id);
-    const selfProfile = await db.get('SELECT updated_at FROM self_profile WHERE id = 1');
-    const stale = latestRun && selfProfile?.updated_at && latestRun.created_at < selfProfile.updated_at;
+    const profile = await db.get('SELECT updated_at FROM profiles WHERE id = ?', profileId);
+    const stale = latestRun && profile?.updated_at && latestRun.created_at < profile.updated_at;
     enriched.push({ ...p, domains, latestRun, assessments, notes, stale });
   }
 
@@ -44,19 +45,19 @@ router.get('/:id', async (req, res) => {
     ? await db.all('SELECT * FROM domain_assessments WHERE run_id = ?', latestRun.id)
     : [];
   const notes = await db.all('SELECT * FROM positives_negatives WHERE partner_id = ? ORDER BY created_at DESC', partner.id);
-  const selfProfile = await db.get('SELECT updated_at FROM self_profile WHERE id = 1');
-  const stale = latestRun && selfProfile?.updated_at && latestRun.created_at < selfProfile.updated_at;
+  const profile = await db.get('SELECT updated_at FROM profiles WHERE id = ?', partner.profile_id);
+  const stale = latestRun && profile?.updated_at && latestRun.created_at < profile.updated_at;
 
   res.json({ ...partner, domains, runs, assessments, notes, stale });
 });
 
 router.post('/', async (req, res) => {
-  const { name, source, status, dob, notes } = req.body;
+  const { name, source, status, dob, notes, profileId = 1 } = req.body;
   if (!name) return res.status(400).json({ error: 'Name is required' });
 
   const result = await db.run(
-    'INSERT INTO partners (name, source, status, dob, notes) VALUES (?, ?, ?, ?, ?)',
-    name, source || '', status || 'active', dob || null, notes || ''
+    'INSERT INTO partners (profile_id, name, source, status, dob, notes) VALUES (?, ?, ?, ?, ?, ?)',
+    profileId, name, source || '', status || 'active', dob || null, notes || ''
   );
 
   await db.batch(

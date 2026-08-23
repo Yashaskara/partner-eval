@@ -6,6 +6,11 @@ import selfProfileRouter from './routes/selfProfile.js';
 import analysisRouter from './routes/analysis.js';
 import prepQuestionsRouter from './routes/prepQuestions.js';
 import settingsRouter from './routes/settings.js';
+import profileQARouter from './routes/profileQA.js';
+import conversationsRouter from './routes/conversations.js';
+import { seedProfileQuestions } from './seeds/seed.js';
+
+await seedProfileQuestions();
 
 const app = express();
 app.use(cors());
@@ -16,5 +21,7 @@ app.use('/api/self-profile', selfProfileRouter);
 app.use('/api/analysis', analysisRouter);
 app.use('/api/prep-questions', prepQuestionsRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/profile-qa', profileQARouter);
+app.use('/api/conversations', conversationsRouter);
 
 export default app;

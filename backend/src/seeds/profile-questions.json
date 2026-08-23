@@ -1,0 +1,557 @@
+{
+  "domain_questions": [
+    {
+      "domain": "lifestyle",
+      "questions": [
+        {
+          "layer": "stance",
+          "question": "Where do you see yourself living long-term?",
+          "options": ["Big city — need the energy and access", "Leaning urban, but flexible on the exact city", "Suburbs or a smaller town with good community", "Rural or remote — the quieter the better"],
+          "sort_order": 1
+        },
+        {
+          "layer": "stance",
+          "question": "What does your ideal daily rhythm look like?",
+          "options": ["Early riser — mornings are sacred", "Flexible — I adapt to what's needed", "Night owl — I come alive after dark", "Irregular — my schedule changes constantly"],
+          "sort_order": 2
+        },
+        {
+          "layer": "stance",
+          "question": "How do you feel about tidiness and home upkeep?",
+          "options": ["Very neat — clutter genuinely stresses me out", "Reasonably tidy but not obsessive", "Relaxed — I clean when it's needed", "Messy and fine with it"],
+          "sort_order": 3
+        },
+        {
+          "layer": "scenario",
+          "question": "Your partner wants to adopt a large dog. You live in a small apartment and work long hours. What's your honest reaction?",
+          "options": ["Let's make it work — I'd love a dog", "I'd want to wait until we have more space", "I'd say no but feel guilty about it", "Hard no — our lifestyle doesn't support it right now"],
+          "sort_order": 4
+        },
+        {
+          "layer": "scenario",
+          "question": "You've just gotten home after an exhausting day. Your partner has friends over and the house is loud. How do you feel?",
+          "options": ["Great — socializing recharges me", "Fine, I'd join for a bit then quietly slip away", "Annoyed — I'd need them to wrap it up soon", "Frustrated — I need advance notice for this kind of thing"],
+          "sort_order": 5
+        },
+        {
+          "layer": "tradeoff",
+          "question": "If you had to choose:",
+          "options": ["A spontaneous, adventurous life with less stability", "A predictable, structured life with deep roots"],
+          "sort_order": 6
+        },
+        {
+          "layer": "reflection",
+          "question": "What's one non-negotiable about how you live day-to-day that a partner would need to accept?",
+          "options": ["My need for personal space and alone time", "My social nature — people are always around", "My routines — I need structure to function", "My spontaneity — I can't do rigid plans"],
+          "sort_order": 7
+        }
+      ]
+    },
+    {
+      "domain": "career",
+      "questions": [
+        {
+          "layer": "stance",
+          "question": "How ambitious are you about your career?",
+          "options": ["Very — career growth is a top priority", "Ambitious but not at the cost of everything else", "Work is a means to an end, not my identity", "I'm actively trying to work less"],
+          "sort_order": 1
+        },
+        {
+          "layer": "stance",
+          "question": "How do you feel about relocating for work?",
+          "options": ["Totally open — I'd move anywhere for the right role", "Open within the same country", "Prefer not to, but would consider it for something exceptional", "Won't relocate — my roots are here"],
+          "sort_order": 2
+        },
+        {
+          "layer": "scenario",
+          "question": "Your partner regularly works 60+ hour weeks and often cancels plans because of work. How do you handle it?",
+          "options": ["I respect the hustle — I'd probably do the same", "I'd support it short-term but need it to change", "I'd have a serious conversation about boundaries", "That's a dealbreaker — presence matters more than income"],
+          "sort_order": 3
+        },
+        {
+          "layer": "scenario",
+          "question": "You're offered your dream job, but it pays 40% less than your current role. Your household depends on both incomes. What do you do?",
+          "options": ["Take it — life's too short for a job you don't love", "Take it if we can cut expenses to make it work", "Negotiate hard, but probably stay for the financial security", "Stay — financial responsibility comes first right now"],
+          "sort_order": 4
+        },
+        {
+          "layer": "tradeoff",
+          "question": "Which matters more to you in a partner?",
+          "options": ["Someone driven who builds something meaningful, even if it means less couple time", "Someone present and available, even if their career is modest"],
+          "sort_order": 5
+        },
+        {
+          "layer": "reflection",
+          "question": "What role should work play in your household?",
+          "options": ["Both partners pursuing ambitious careers equally", "One career takes priority while the other provides flexibility", "Both working, but neither career dominates home life", "Ideally one partner doesn't need to work"],
+          "sort_order": 6
+        }
+      ]
+    },
+    {
+      "domain": "family",
+      "questions": [
+        {
+          "layer": "stance",
+          "question": "How close are you to your parents and extended family?",
+          "options": ["Very close — we talk daily and they're deeply involved", "Close but with healthy boundaries", "Cordial but distant — I'm independent", "Complicated — there's tension or estrangement"],
+          "sort_order": 1
+        },
+        {
+          "layer": "stance",
+          "question": "How involved should in-laws be in a marriage?",
+          "options": ["Very — family is everything, they should be part of decisions", "Involved but not in our day-to-day", "Kept at a friendly distance", "Minimal — our marriage is between us"],
+          "sort_order": 2
+        },
+        {
+          "layer": "scenario",
+          "question": "Your partner's parents want to move in with you as they age. How do you feel?",
+          "options": ["Of course — it's our duty and I'd be happy to", "I'd do it willingly but we'd need ground rules", "I'd prefer we help them with nearby assisted living", "I'd struggle with that — I need my own space"],
+          "sort_order": 3
+        },
+        {
+          "layer": "scenario",
+          "question": "Your family openly disapproves of a decision you and your partner made together. Your partner feels unsupported. What do you do?",
+          "options": ["Stand firmly with my partner — we decided together", "Try to mediate and find middle ground", "Hear my family out — they might have a point", "This would really stress me out and I'd probably avoid the conflict"],
+          "sort_order": 4
+        },
+        {
+          "layer": "tradeoff",
+          "question": "If your family and partner were in conflict, who gets your loyalty first?",
+          "options": ["My partner — we're building a new family unit", "My birth family — they were here first and always will be"],
+          "sort_order": 5
+        },
+        {
+          "layer": "reflection",
+          "question": "What's the biggest lesson your family taught you about relationships?",
+          "options": ["Sacrifice and putting family above self", "Independence and self-reliance", "Communication and emotional openness", "Duty and responsibility to those who raised you"],
+          "sort_order": 6
+        }
+      ]
+    },
+    {
+      "domain": "conflict",
+      "questions": [
+        {
+          "layer": "stance",
+          "question": "When you're upset with someone, what's your natural first reaction?",
+          "options": ["I bring it up immediately — I can't sit with it", "I take some time to cool off, then address it", "I tend to go quiet and process internally", "I avoid it — I hope it resolves on its own"],
+          "sort_order": 1
+        },
+        {
+          "layer": "stance",
+          "question": "How do you feel about apologizing?",
+          "options": ["Easy — I apologize quickly even if I'm only partly wrong", "I'll apologize when I know I'm wrong, but I need to get there", "It's hard for me — I need to feel heard first", "I rarely apologize first — I wait for the other person"],
+          "sort_order": 2
+        },
+        {
+          "layer": "scenario",
+          "question": "You and your partner have a major disagreement about a financial decision. After two heated discussions, neither has budged. What happens next?",
+          "options": ["I'd suggest we bring in a neutral third party", "I'd compromise even if I disagree, to keep the peace", "I'd keep pushing my position — I know I'm right", "I'd let it go but feel resentful about it"],
+          "sort_order": 3
+        },
+        {
+          "layer": "scenario",
+          "question": "Your partner says something hurtful during an argument. They apologize the next day. How do you recover?",
+          "options": ["Accept the apology and move on — everyone says things they don't mean", "Accept it but need a real conversation about what was said", "Forgive but not forget — I'd reference it if it happens again", "Struggle to let it go — words really stick with me"],
+          "sort_order": 4
+        },
+        {
+          "layer": "tradeoff",
+          "question": "Which matters more after an argument?",
+          "options": ["Resolving the issue fully, even if it takes days of uncomfortable conversation", "Restoring emotional closeness quickly, even if the issue isn't fully resolved"],
+          "sort_order": 5
+        },
+        {
+          "layer": "reflection",
+          "question": "What's your biggest weakness in conflict?",
+          "options": ["I shut down and withdraw", "I get too emotional and say things I regret", "I become stubborn and stop listening", "I avoid it entirely until it explodes"],
+          "sort_order": 6
+        }
+      ]
+    },
+    {
+      "domain": "spirituality",
+      "questions": [
+        {
+          "layer": "stance",
+          "question": "What role does faith or spirituality play in your life?",
+          "options": ["Central — it guides my daily decisions and identity", "Important but personal — I practice privately", "I'm spiritual but not religious", "Not a factor — I'm secular"],
+          "sort_order": 1
+        },
+        {
+          "layer": "stance",
+          "question": "How important is it that your partner shares your beliefs?",
+          "options": ["Essential — we need to be on the same page", "Preferred but I'm open to differences if there's mutual respect", "Doesn't matter as long as they don't push their views on me", "Irrelevant — I don't think about this"],
+          "sort_order": 2
+        },
+        {
+          "layer": "scenario",
+          "question": "Your partner follows a different faith tradition and wants to raise your children in their religion. How do you respond?",
+          "options": ["No — my faith tradition takes priority for our children", "I'd want to blend both and let the children choose later", "I'm open to it if the values align with mine", "Fine — I don't have strong feelings about religious upbringing"],
+          "sort_order": 3
+        },
+        {
+          "layer": "tradeoff",
+          "question": "Which matters more in a partner?",
+          "options": ["Shared religious practice and community", "Shared moral values regardless of religious label"],
+          "sort_order": 4
+        },
+        {
+          "layer": "reflection",
+          "question": "What's the one thing about your faith or values a partner must understand?",
+          "options": ["It's not negotiable — my practice is part of who I am", "I need freedom to practice without judgment", "I'm still figuring out my beliefs and need patience", "I need a partner who questions and thinks critically, not one who follows blindly"],
+          "sort_order": 5
+        }
+      ]
+    },
+    {
+      "domain": "finances",
+      "questions": [
+        {
+          "layer": "stance",
+          "question": "How would you describe your relationship with money?",
+          "options": ["Disciplined saver — I track everything and plan ahead", "Generally responsible but I enjoy spending on experiences", "Live in the moment — money comes and goes", "Anxious about it — finances stress me out"],
+          "sort_order": 1
+        },
+        {
+          "layer": "stance",
+          "question": "How transparent should finances be in a partnership?",
+          "options": ["Fully — joint accounts, shared visibility on everything", "Mostly — joint for shared expenses, some personal money", "Separate accounts, split expenses fairly", "Keep finances independent — what's mine is mine"],
+          "sort_order": 2
+        },
+        {
+          "layer": "scenario",
+          "question": "You discover your partner has significant debt they didn't mention before. How do you react?",
+          "options": ["Concerned but supportive — let's make a plan together", "Upset about the secrecy more than the debt itself", "Seriously question whether this is a partnership I can trust", "Dealbreaker — financial dishonesty is a fundamental issue"],
+          "sort_order": 3
+        },
+        {
+          "layer": "scenario",
+          "question": "Your partner wants to make a large purchase (car, property investment) that you think is unwise. What do you do?",
+          "options": ["Voice my concern once, then support their decision", "Push back hard and try to convince them otherwise", "Suggest we consult a financial advisor together", "If it's their money, it's their call — even if I disagree"],
+          "sort_order": 4
+        },
+        {
+          "layer": "tradeoff",
+          "question": "Which matters more?",
+          "options": ["Financial security — savings, insurance, retirement planned", "Financial freedom — spend on what makes life enjoyable now"],
+          "sort_order": 5
+        },
+        {
+          "layer": "reflection",
+          "question": "What's your biggest financial fear in a partnership?",
+          "options": ["Being controlled or having no financial autonomy", "A partner who spends recklessly and creates instability", "Never being able to afford the life I want", "Money becoming the primary source of conflict"],
+          "sort_order": 6
+        }
+      ]
+    },
+    {
+      "domain": "children",
+      "questions": [
+        {
+          "layer": "stance",
+          "question": "Do you want children?",
+          "options": ["Yes, definitely", "Leaning yes, but not 100% certain", "Leaning no, but could be convinced", "No — I don't want children"],
+          "sort_order": 1
+        },
+        {
+          "layer": "stance",
+          "question": "If you want children, what's your ideal timeline?",
+          "options": ["Soon — within the next 2 years", "In a few years — after we're settled", "Eventually, no rush", "Not applicable — I don't want children"],
+          "sort_order": 2,
+          "conditional_on": "children:1:0,1,2"
+        },
+        {
+          "layer": "scenario",
+          "question": "You and your partner disagree on a major parenting decision — like schooling approach or discipline style. How do you resolve it?",
+          "options": ["Research together and go with what evidence supports", "Defer to whoever feels more strongly about it", "Compromise — find a middle ground even if neither is fully happy", "Follow how I was raised — it worked for me"],
+          "sort_order": 3
+        },
+        {
+          "layer": "scenario",
+          "question": "Your partner changes their mind about wanting children after you're already together. How do you handle this?",
+          "options": ["This is a dealbreaker — I can't compromise on this", "I'd be devastated but would try to understand their reasons", "I'd be open to reconsidering my own position", "I'd give it time — people's feelings can evolve"],
+          "sort_order": 4
+        },
+        {
+          "layer": "tradeoff",
+          "question": "Which is closer to your view?",
+          "options": ["Children are the primary purpose of partnership — everything else is secondary", "Children are one part of a rich partnership — not the defining feature"],
+          "sort_order": 5
+        },
+        {
+          "layer": "reflection",
+          "question": "What kind of parent do you want to be?",
+          "options": ["Hands-on and deeply involved in every aspect", "Present and loving but with strong boundaries", "More of a guide — give them independence early", "Honestly, I'm not sure yet — I'm still figuring it out"],
+          "sort_order": 6
+        }
+      ]
+    },
+    {
+      "domain": "intimacy",
+      "questions": [
+        {
+          "layer": "stance",
+          "question": "How important is physical affection in your daily life?",
+          "options": ["Very — I need touch, closeness, and physical presence", "Important but I don't need it constantly", "I appreciate it but I'm not naturally affectionate", "I'm reserved — physical affection takes time for me"],
+          "sort_order": 1
+        },
+        {
+          "layer": "stance",
+          "question": "How comfortable are you discussing physical needs and boundaries openly?",
+          "options": ["Very comfortable — honest communication is essential", "Somewhat comfortable if the relationship is safe", "It's hard for me but I recognize it's important", "Very private — I'd rather let things develop naturally"],
+          "sort_order": 2
+        },
+        {
+          "layer": "scenario",
+          "question": "You and your partner have different levels of need for physical closeness. You want more than they're offering. What do you do?",
+          "options": ["Have a direct conversation about what I need", "Try to express it through actions and see if they reciprocate", "Accept the difference and find other ways to feel connected", "Feel rejected but probably not bring it up"],
+          "sort_order": 3
+        },
+        {
+          "layer": "tradeoff",
+          "question": "Which matters more to you?",
+          "options": ["Emotional intimacy — deep conversations, vulnerability, feeling truly known", "Physical intimacy — touch, closeness, physical expression of love"],
+          "sort_order": 4
+        },
+        {
+          "layer": "reflection",
+          "question": "What do you most need from a partner to feel genuinely close?",
+          "options": ["Consistent physical affection and presence", "Emotional vulnerability and deep conversations", "Quality time — undivided attention regularly", "Acts of care — they show love through what they do"],
+          "sort_order": 5
+        }
+      ]
+    },
+    {
+      "domain": "hobbies",
+      "questions": [
+        {
+          "layer": "stance",
+          "question": "How much personal time do you need apart from your partner?",
+          "options": ["A lot — I need regular solo time to recharge", "Some — a few hours a week for my own things", "Not much — I'd rather do most things together", "Very little — I'm happiest when we're always together"],
+          "sort_order": 1
+        },
+        {
+          "layer": "stance",
+          "question": "How important is it that your partner shares your interests?",
+          "options": ["Very — I want a best friend who does everything with me", "Some overlap is nice but we should have our own things too", "Not important — different interests keep things interesting", "I actively prefer separate hobbies"],
+          "sort_order": 2
+        },
+        {
+          "layer": "scenario",
+          "question": "Your partner picks up an expensive hobby (golf, photography gear, travel) that eats into both time and money. How do you feel?",
+          "options": ["Happy for them — everyone needs a passion", "Fine with the time, but we should budget for it together", "Concerned — I'd want more of that time and money directed at us", "Frustrated — it feels selfish"],
+          "sort_order": 3
+        },
+        {
+          "layer": "tradeoff",
+          "question": "Which sounds more like your ideal weekend?",
+          "options": ["Each doing your own thing, reconnecting over dinner", "Doing something together all day — hiking, cooking, exploring"],
+          "sort_order": 4
+        },
+        {
+          "layer": "reflection",
+          "question": "What's the one hobby or interest a partner absolutely must respect about you?",
+          "options": ["My need for physical activity / fitness", "My creative or intellectual pursuits", "My social life and friendships", "My downtime — sometimes I just need to do nothing"],
+          "sort_order": 5
+        }
+      ]
+    },
+    {
+      "domain": "health",
+      "questions": [
+        {
+          "layer": "stance",
+          "question": "How health-conscious are you?",
+          "options": ["Very — I'm disciplined about diet, exercise, and sleep", "Moderately — I try but I'm not rigid about it", "Casual — I enjoy life and don't overthink health", "I know I should care more but I don't"],
+          "sort_order": 1
+        },
+        {
+          "layer": "stance",
+          "question": "How do you feel about discussing mental health openly?",
+          "options": ["Very open — I think therapy and emotional work are essential", "Open but private — I deal with my own stuff", "Uncomfortable — I'm working on being more open", "Very private — I handle things internally"],
+          "sort_order": 2
+        },
+        {
+          "layer": "scenario",
+          "question": "Your partner is going through a sustained period of depression or anxiety. They're withdrawn and less present. How do you handle it?",
+          "options": ["Step up fully — research, support, be patient for as long as it takes", "Be supportive but gently encourage professional help", "Try to help but honestly I'd struggle with it over time", "I wouldn't know what to do — this is out of my depth"],
+          "sort_order": 3
+        },
+        {
+          "layer": "scenario",
+          "question": "Your partner has a chronic health condition that requires lifestyle adjustments — dietary restrictions, regular medical visits, limited activities. How does this affect your outlook?",
+          "options": ["Not at all — I'd adapt our life fully", "I'd do it willingly but it would be an adjustment", "Concerned about the long-term impact on our plans", "This would be very hard for me to accept"],
+          "sort_order": 4
+        },
+        {
+          "layer": "tradeoff",
+          "question": "Which do you value more in a partner?",
+          "options": ["Physical health discipline — they take care of their body", "Emotional health maturity — they've done the inner work"],
+          "sort_order": 5
+        },
+        {
+          "layer": "reflection",
+          "question": "What's your relationship with substances (alcohol, smoking, etc.)?",
+          "options": ["I don't partake and prefer a partner who doesn't either", "Social/occasional — I'm relaxed about it", "I enjoy it regularly but responsibly", "It's complicated and something I'm working on"],
+          "sort_order": 6
+        }
+      ]
+    },
+    {
+      "domain": "social",
+      "questions": [
+        {
+          "layer": "stance",
+          "question": "Where do you fall on the introvert-extrovert spectrum?",
+          "options": ["Strong introvert — socializing drains me", "Introverted but I enjoy small groups", "Extroverted — I recharge around people", "Strong extrovert — I need people around me constantly"],
+          "sort_order": 1
+        },
+        {
+          "layer": "stance",
+          "question": "How do you feel about your partner having close friends of the opposite gender?",
+          "options": ["Totally fine — trust is non-negotiable", "Fine in principle but I'd want to know them", "Slightly uncomfortable but I'd work on it", "Not comfortable with it"],
+          "sort_order": 2
+        },
+        {
+          "layer": "scenario",
+          "question": "Your partner wants to host a dinner party every other weekend. You'd rather have quiet evenings at home. How do you navigate this?",
+          "options": ["Compromise — host once a month and keep other weekends quiet", "Go along with it — their happiness matters", "Be honest that it's too much and find a middle ground", "Attend some and skip others — they can host without me"],
+          "sort_order": 3
+        },
+        {
+          "layer": "scenario",
+          "question": "Your partner's best friend openly dislikes you and makes it known. Your partner stays neutral. How do you react?",
+          "options": ["Ask my partner to address it directly with their friend", "Try to win the friend over myself", "Accept it — not everyone has to like me", "Feel hurt that my partner won't stand up for me — this becomes an issue"],
+          "sort_order": 4
+        },
+        {
+          "layer": "tradeoff",
+          "question": "Which is more important?",
+          "options": ["A rich social life with many friendships and community", "A tight inner circle — few friends but deeply close ones"],
+          "sort_order": 5
+        },
+        {
+          "layer": "reflection",
+          "question": "What's your biggest need socially from a partner?",
+          "options": ["That they get along with my friends and family", "That they respect my need for solitude", "That they're willing to build a shared social circle", "That they have their own social life and don't depend on me for it"],
+          "sort_order": 6
+        }
+      ]
+    },
+    {
+      "domain": "history",
+      "questions": [
+        {
+          "layer": "stance",
+          "question": "How much past relationship experience do you have?",
+          "options": ["Significant — multiple long-term relationships", "Some — a few relationships of varying length", "Minimal — mostly casual or brief", "None — this would be my first relationship"],
+          "sort_order": 1
+        },
+        {
+          "layer": "stance",
+          "question": "How open are you about sharing your past with a partner?",
+          "options": ["Fully open — they should know everything", "Open about the important stuff, private about details", "Selective — only what's relevant to us", "Very private — the past is the past"],
+          "sort_order": 2
+        },
+        {
+          "layer": "scenario",
+          "question": "Your partner shares that they were deeply hurt in a past relationship and still carry some trust issues. How does this land for you?",
+          "options": ["I'd be patient and help them work through it", "Appreciate the honesty but expect them to be actively healing", "Concerned — I don't want to pay for someone else's mistakes", "I'd want to know more before deciding how I feel"],
+          "sort_order": 3
+        },
+        {
+          "layer": "scenario",
+          "question": "You find out your partner is still in occasional contact with an ex. They say it's purely friendly. How do you handle it?",
+          "options": ["Fine — I trust them completely", "Okay as long as I'm aware and have met the ex", "Uncomfortable — I'd ask them to reduce contact", "Not acceptable — clean breaks are important to me"],
+          "sort_order": 4
+        },
+        {
+          "layer": "tradeoff",
+          "question": "Which matters more in a partner's history?",
+          "options": ["What they learned from past relationships — growth and self-awareness", "How cleanly they ended things — no lingering drama or attachments"],
+          "sort_order": 5
+        },
+        {
+          "layer": "reflection",
+          "question": "What's the biggest thing your past taught you about what you need?",
+          "options": ["I need someone who communicates — silence destroyed my last connection", "I need independence — being too enmeshed didn't work", "I need consistency — hot and cold energy is exhausting", "I'm still discovering what I need — I don't have clear patterns yet"],
+          "sort_order": 6
+        }
+      ]
+    }
+  ],
+  "cross_cutting": [
+    {
+      "layer": "scenario",
+      "question": "Your partner gets offered a dream job in another country. It means leaving your parents, your job, and your friend circle behind. What's your honest first reaction?",
+      "options": ["Excited — I'd go without much hesitation", "Supportive but we'd need a deep conversation about what we're giving up", "I'd want them to find something comparable here", "That's a dealbreaker — my roots matter more"],
+      "domains": ["career", "family", "lifestyle", "conflict"],
+      "sort_order": 1
+    },
+    {
+      "layer": "scenario",
+      "question": "A major financial setback hits — job loss, medical bill, failed investment. Your savings take a serious hit. How do you and your partner navigate this?",
+      "options": ["Rally together — cut expenses, make a plan, no blame", "I'd take charge of the recovery plan and expect them to follow it", "I'd need emotional support first before I can think about solutions", "I'd be angry or anxious and probably not handle it well initially"],
+      "domains": ["finances", "conflict", "career", "health"],
+      "sort_order": 2
+    },
+    {
+      "layer": "scenario",
+      "question": "You're expecting a child sooner than planned. Your career is at a critical point and your partner's parents want to move in to help. How do you feel about all of this?",
+      "options": ["Embrace it all — family, career, it'll work out", "Grateful for the help but need to set clear boundaries with the in-laws", "Stressed about career impact — I need to protect my trajectory", "Overwhelmed — this is too much change at once"],
+      "domains": ["children", "career", "family", "lifestyle"],
+      "sort_order": 3
+    },
+    {
+      "layer": "scenario",
+      "question": "Your partner's family follows strict religious dietary and lifestyle practices. They expect you to observe these when visiting — and ideally at home too. How do you respond?",
+      "options": ["I'd adopt the practices fully out of respect", "Happy to observe when visiting, but our home is our own", "I'd participate politely but wouldn't change my daily life", "This would be a significant source of friction for me"],
+      "domains": ["spirituality", "family", "lifestyle"],
+      "sort_order": 4
+    },
+    {
+      "layer": "scenario",
+      "question": "Your partner confides that they're struggling with anxiety and it's affecting your relationship — they're less present, less intimate, less social. This has been going on for months. What do you do?",
+      "options": ["Stand by them fully — this is what partnership means", "Be supportive but insist on professional help", "Start to feel neglected and bring up my own needs too", "Struggle with it — I need a partner who can be fully present"],
+      "domains": ["health", "intimacy", "social", "conflict"],
+      "sort_order": 5
+    },
+    {
+      "layer": "scenario",
+      "question": "You haven't had quality time together in weeks — between work, social obligations, and family visits, you're both exhausted. You finally have a free Saturday. Your partner wants to spend it with friends. What do you feel?",
+      "options": ["Disappointed but understanding — I'd ask if we can do something just us on Sunday", "Hurt — I'd tell them I need that time with them", "Fine — I'll use the time for myself and we'll reconnect later", "Frustrated — this pattern is becoming a problem"],
+      "domains": ["hobbies", "social", "intimacy", "conflict"],
+      "sort_order": 6
+    },
+    {
+      "layer": "scenario",
+      "question": "You disagree with how your partner is handling money — they've made a large purchase without consulting you, and when you bring it up, they say it's their money and you're overreacting. How do you respond?",
+      "options": ["Calmly explain that shared life means shared financial decisions", "Get upset — this feels disrespectful to the partnership", "Let it go this time but set a rule for future big purchases", "Question whether our values around money are compatible"],
+      "domains": ["finances", "conflict", "lifestyle"],
+      "sort_order": 7
+    },
+    {
+      "layer": "scenario",
+      "question": "Your partner wants to send your children to a religious school. You'd prefer a secular one that focuses on academics and critical thinking. How do you approach this?",
+      "options": ["Defer to their wishes — faith education is valuable", "Propose a school that balances both — or supplement at home", "Push for secular education — critical thinking comes first", "This reveals a deeper values gap we need to address before deciding"],
+      "domains": ["children", "spirituality", "conflict"],
+      "sort_order": 8
+    },
+    {
+      "layer": "scenario",
+      "question": "Early in your relationship, your partner tells you about a past they're not proud of — previous relationship mistakes, a period of poor decisions, or a family situation that's complicated. How does this affect your view of them?",
+      "options": ["It makes me respect them more for being honest", "I appreciate the honesty but need time to process", "I'd want to understand what they've learned and how they've changed", "It would genuinely concern me and affect my trust"],
+      "domains": ["history", "conflict", "intimacy"],
+      "sort_order": 9
+    },
+    {
+      "layer": "scenario",
+      "question": "You're building a life together and realize you have fundamentally different energy levels. You're active and social; they're homebodies who recharge alone. Neither is wrong, but it creates daily friction. How do you make it work?",
+      "options": ["Create separate routines that respect both needs", "Alternate — some weekends my way, some theirs", "I'd probably try to pull them into my world more", "This might be an incompatibility that's hard to bridge"],
+      "domains": ["lifestyle", "hobbies", "social", "conflict"],
+      "sort_order": 10
+    }
+  ]
+}

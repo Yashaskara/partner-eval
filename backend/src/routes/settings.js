@@ -12,13 +12,13 @@ const PROVIDERS = {
   },
   openai: {
     name: 'OpenAI',
-    defaultModel: 'gpt-4o',
+    defaultModel: 'gpt-5.6-luna',
     envKey: 'OPENAI_API_KEY',
     envModel: 'OPENAI_MODEL',
   },
   google: {
     name: 'Google',
-    defaultModel: 'gemini-1.5-pro',
+    defaultModel: 'gemini-3.1-flash-lite',
     envKey: 'GOOGLE_API_KEY',
     envModel: 'GOOGLE_MODEL',
   },

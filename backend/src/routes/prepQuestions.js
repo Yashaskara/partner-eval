@@ -13,13 +13,20 @@ const DOMAIN_LABELS = {
 };
 
 router.get('/', async (req, res) => {
-  const questions = await db.all('SELECT * FROM prep_questions ORDER BY priority ASC, id ASC');
+  const profileId = Number(req.query.profileId) || 1;
+  const questions = await db.all(
+    'SELECT * FROM prep_questions WHERE profile_id = ? ORDER BY priority ASC, id ASC',
+    profileId
+  );
   res.json(questions);
 });
 
 router.post('/generate', async (req, res) => {
   try {
-    const selfDomains = await db.all('SELECT domain, answer, priority FROM self_profile_domains');
+    const profileId = Number(req.body.profileId) || 1;
+    const selfDomains = await db.all(
+      'SELECT domain, answer, priority FROM profile_domains WHERE profile_id = ?', profileId
+    );
     const hasContent = selfDomains.some(d => d.answer.trim().length > 0);
     if (!hasContent) return res.status(400).json({ error: 'Fill in your self-profile first' });
 
@@ -29,16 +36,18 @@ router.post('/generate', async (req, res) => {
     const prompt = buildPrepPrompt(selfDomains);
     const result = await provider.analyze(prompt);
 
-    const stmts = [{ sql: 'DELETE FROM prep_questions', args: [] }];
+    const stmts = [{ sql: 'DELETE FROM prep_questions WHERE profile_id = ?', args: [profileId] }];
     for (const q of result.questions) {
       stmts.push({
-        sql: 'INSERT INTO prep_questions (domain, priority, question, guide_aligned, guide_watch, guide_flag) VALUES (?, ?, ?, ?, ?, ?)',
-        args: [q.domain, q.priority, q.question, q.guide_aligned, q.guide_watch, q.guide_flag],
+        sql: 'INSERT INTO prep_questions (profile_id, domain, priority, question, guide_aligned, guide_watch, guide_flag) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        args: [profileId, q.domain, q.priority, q.question, q.guide_aligned, q.guide_watch, q.guide_flag],
       });
     }
     await db.batch(stmts);
 
-    const questions = await db.all('SELECT * FROM prep_questions ORDER BY priority ASC, id ASC');
+    const questions = await db.all(
+      'SELECT * FROM prep_questions WHERE profile_id = ? ORDER BY priority ASC, id ASC', profileId
+    );
     res.json(questions);
   } catch (err) {
     console.error('Prep question generation error:', err);
@@ -47,7 +56,8 @@ router.post('/generate', async (req, res) => {
 });
 
 router.delete('/', async (req, res) => {
-  await db.run('DELETE FROM prep_questions');
+  const profileId = Number(req.query.profileId) || 1;
+  await db.run('DELETE FROM prep_questions WHERE profile_id = ?', profileId);
   res.json({ ok: true });
 });
 

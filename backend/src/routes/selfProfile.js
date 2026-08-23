@@ -1,60 +1,66 @@
 import { Router } from 'express';
 import db, { DOMAINS } from '../db.js';
+import { getProvider } from '../llm/index.js';
 
 const router = Router();
 
 router.get('/', async (req, res) => {
-  const profile = await db.get('SELECT * FROM self_profile WHERE id = 1');
+  const profileId = Number(req.query.profileId) || 1;
+  const profile = await db.get('SELECT * FROM profiles WHERE id = ?', profileId);
   const domains = await db.all(
-    'SELECT domain, answer, priority, updated_at FROM self_profile_domains ORDER BY rowid'
+    'SELECT domain, answer, priority, updated_at FROM profile_domains WHERE profile_id = ? ORDER BY rowid',
+    profileId
   );
   res.json({ ...profile, domains });
 });
 
 router.put('/domains/:domain', async (req, res) => {
   const { domain } = req.params;
-  const { answer, priority } = req.body;
+  const { answer, priority, profileId = 1 } = req.body;
 
   if (!DOMAINS.includes(domain)) return res.status(400).json({ error: 'Invalid domain' });
 
   await db.run(
-    `UPDATE self_profile_domains SET answer = COALESCE(?, answer), priority = COALESCE(?, priority),
-     updated_at = datetime('now') WHERE domain = ?`,
-    answer, priority, domain
+    `UPDATE profile_domains SET answer = COALESCE(?, answer), priority = COALESCE(?, priority),
+     updated_at = datetime('now') WHERE profile_id = ? AND domain = ?`,
+    answer, priority, profileId, domain
   );
-  await db.run("UPDATE self_profile SET updated_at = datetime('now') WHERE id = 1");
+  await db.run("UPDATE profiles SET updated_at = datetime('now') WHERE id = ?", profileId);
 
   res.json({ ok: true });
 });
 
 router.put('/domains', async (req, res) => {
-  const { domains } = req.body;
+  const { domains, profileId = 1 } = req.body;
   if (!Array.isArray(domains)) return res.status(400).json({ error: 'domains array required' });
 
   const stmts = [];
   for (const { domain, answer, priority } of domains) {
     if (!DOMAINS.includes(domain)) continue;
     stmts.push({
-      sql: `UPDATE self_profile_domains SET answer = COALESCE(?, answer), priority = COALESCE(?, priority),
-       updated_at = datetime('now') WHERE domain = ?`,
-      args: [answer, priority, domain],
+      sql: `UPDATE profile_domains SET answer = COALESCE(?, answer), priority = COALESCE(?, priority),
+       updated_at = datetime('now') WHERE profile_id = ? AND domain = ?`,
+      args: [answer, priority, profileId, domain],
     });
   }
-  stmts.push({ sql: "UPDATE self_profile SET updated_at = datetime('now') WHERE id = 1", args: [] });
+  stmts.push({ sql: "UPDATE profiles SET updated_at = datetime('now') WHERE id = ?", args: [profileId] });
   await db.batch(stmts);
   res.json({ ok: true });
 });
 
 router.post('/reset', async (req, res) => {
-  const current = await db.all('SELECT domain, answer, priority FROM self_profile_domains');
+  const profileId = Number(req.body.profileId) || 1;
+  const current = await db.all(
+    'SELECT domain, answer, priority FROM profile_domains WHERE profile_id = ?', profileId
+  );
 
   const stmts = [
-    { sql: "UPDATE self_profile SET snapshot_json = ?, updated_at = datetime('now') WHERE id = 1", args: [JSON.stringify(current)] },
+    { sql: "UPDATE profiles SET snapshot_json = ?, updated_at = datetime('now') WHERE id = ?", args: [JSON.stringify(current), profileId] },
   ];
   for (const d of DOMAINS) {
     stmts.push({
-      sql: "UPDATE self_profile_domains SET answer = '', priority = 2, updated_at = datetime('now') WHERE domain = ?",
-      args: [d],
+      sql: "UPDATE profile_domains SET answer = '', priority = 2, updated_at = datetime('now') WHERE profile_id = ? AND domain = ?",
+      args: [profileId, d],
     });
   }
   await db.batch(stmts);
@@ -62,18 +68,19 @@ router.post('/reset', async (req, res) => {
 });
 
 router.post('/restore', async (req, res) => {
-  const profile = await db.get('SELECT snapshot_json FROM self_profile WHERE id = 1');
+  const profileId = Number(req.body.profileId) || 1;
+  const profile = await db.get('SELECT snapshot_json FROM profiles WHERE id = ?', profileId);
   if (!profile?.snapshot_json) return res.status(404).json({ error: 'No snapshot to restore' });
 
   const snapshot = JSON.parse(profile.snapshot_json);
   const stmts = [];
   for (const { domain, answer, priority } of snapshot) {
     stmts.push({
-      sql: "UPDATE self_profile_domains SET answer = ?, priority = ?, updated_at = datetime('now') WHERE domain = ?",
-      args: [answer, priority, domain],
+      sql: "UPDATE profile_domains SET answer = ?, priority = ?, updated_at = datetime('now') WHERE profile_id = ? AND domain = ?",
+      args: [answer, priority, profileId, domain],
     });
   }
-  stmts.push({ sql: "UPDATE self_profile SET snapshot_json = NULL, updated_at = datetime('now') WHERE id = 1", args: [] });
+  stmts.push({ sql: "UPDATE profiles SET snapshot_json = NULL, updated_at = datetime('now') WHERE id = ?", args: [profileId] });
   await db.batch(stmts);
   res.json({ ok: true });
 });
