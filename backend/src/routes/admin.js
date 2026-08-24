@@ -120,6 +120,42 @@ router.delete('/allowlist/:email', async (req, res) => {
   res.json({ ok: true });
 });
 
+router.get('/access-requests', async (req, res) => {
+  const list = await db.all('SELECT * FROM access_requests ORDER BY created_at DESC');
+  res.json(list);
+});
+
+router.post('/access-requests/:id/approve', async (req, res) => {
+  const request = await db.get('SELECT * FROM access_requests WHERE id = ?', req.params.id);
+  if (!request) return res.status(404).json({ error: 'Request not found' });
+
+  await db.batch([
+    {
+      sql: 'INSERT OR IGNORE INTO allowlist (email, added_by) VALUES (?, ?)',
+      args: [request.email, req.user.email],
+    },
+    {
+      sql: `UPDATE access_requests SET status = 'approved', reviewed_at = datetime('now'), reviewed_by = ? WHERE id = ?`,
+      args: [req.user.email, request.id],
+    },
+  ]);
+  res.json({ ok: true });
+});
+
+router.post('/access-requests/:id/reject', async (req, res) => {
+  const result = await db.run(
+    `UPDATE access_requests SET status = 'rejected', reviewed_at = datetime('now'), reviewed_by = ? WHERE id = ?`,
+    req.user.email, req.params.id
+  );
+  if (!result.changes) return res.status(404).json({ error: 'Request not found' });
+  res.json({ ok: true });
+});
+
+router.delete('/access-requests/:id', async (req, res) => {
+  await db.run('DELETE FROM access_requests WHERE id = ?', req.params.id);
+  res.json({ ok: true });
+});
+
 router.put('/user-limits/:userId', async (req, res) => {
   const { dailyTokenLimit } = req.body;
   if (!dailyTokenLimit || dailyTokenLimit < 0) return res.status(400).json({ error: 'Valid dailyTokenLimit required' });

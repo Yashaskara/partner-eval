@@ -12,6 +12,7 @@ import settingsRouter from './routes/settings.js';
 import profileQARouter from './routes/profileQA.js';
 import conversationsRouter from './routes/conversations.js';
 import adminRouter from './routes/admin.js';
+import accessRequestsRouter from './routes/accessRequests.js';
 import { seedProfileQuestions } from './seeds/seed.js';
 
 await seedProfileQuestions();
@@ -24,6 +25,9 @@ app.use(cors({
 app.use(express.json());
 
 app.all('/api/auth/*', toNodeHandler(auth));
+
+// Public / session-only: must be mounted before the allowlist gate.
+app.use('/api/access-requests', accessRequestsRouter);
 
 app.use('/api', requireAuth);
 

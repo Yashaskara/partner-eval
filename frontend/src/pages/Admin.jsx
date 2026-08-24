@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { api } from '../api.js';
 
 export default function Admin() {
-  const [tab, setTab] = useState('allowlist');
+  const [tab, setTab] = useState('requests');
+  const [pendingCount, setPendingCount] = useState(0);
 
   return (
     <div className="page page-narrow">
@@ -15,12 +16,16 @@ export default function Admin() {
       </div>
 
       <div className="seg" style={{ marginBottom: 22 }}>
+        <button className={`seg-opt${tab === 'requests' ? ' active' : ''}`} onClick={() => setTab('requests')}>
+          Requests{pendingCount > 0 ? ` (${pendingCount})` : ''}
+        </button>
         <button className={`seg-opt${tab === 'allowlist' ? ' active' : ''}`} onClick={() => setTab('allowlist')}>Allowlist</button>
         <button className={`seg-opt${tab === 'users' ? ' active' : ''}`} onClick={() => setTab('users')}>Users & usage</button>
         <button className={`seg-opt${tab === 'limits' ? ' active' : ''}`} onClick={() => setTab('limits')}>Limits</button>
       </div>
       <hr className="hr" style={{ margin: '0 0 22px' }} />
 
+      {tab === 'requests' && <RequestsTab onCountChange={setPendingCount} />}
       {tab === 'allowlist' && <AllowlistTab />}
       {tab === 'users' && <UsersTab />}
       {tab === 'limits' && <LimitsTab />}
@@ -219,6 +224,96 @@ function LimitsTab() {
         ))}
         {users.length === 0 && <p className="text-muted" style={{ padding: 20, textAlign: 'center' }}>No users yet</p>}
       </div>
+    </div>
+  );
+}
+
+function RequestsTab({ onCountChange }) {
+  const [list, setList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(null);
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    try {
+      const rows = await api.admin.getAccessRequests();
+      setList(rows);
+      onCountChange?.(rows.filter(r => r.status === 'pending').length);
+    } catch (e) { console.error(e); }
+    setLoading(false);
+  }
+
+  async function act(id, action) {
+    setBusy(id);
+    try {
+      if (action === 'approve') await api.admin.approveAccessRequest(id);
+      else await api.admin.rejectAccessRequest(id);
+      await load();
+    } catch (e) { alert('Failed: ' + e.message); }
+    setBusy(null);
+  }
+
+  async function handleDelete(id, email) {
+    if (!confirm(`Delete the request from ${email}?`)) return;
+    setBusy(id);
+    try {
+      await api.admin.deleteAccessRequest(id);
+      await load();
+    } catch (e) { alert('Failed: ' + e.message); }
+    setBusy(null);
+  }
+
+  if (loading) return <p>Loading...</p>;
+
+  const pending = list.filter(r => r.status === 'pending');
+  const reviewed = list.filter(r => r.status !== 'pending');
+
+  return (
+    <div>
+      <p className="text-muted" style={{ fontSize: 12.5, marginBottom: 18 }}>
+        Approving a request adds the email to the allowlist — they can sign in straight away.
+      </p>
+
+      <div style={{ borderTop: '1px solid var(--color-divider)' }}>
+        {pending.map(r => (
+          <div key={r.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 10px', borderBottom: '1px solid var(--color-divider)' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 500 }}>{r.email}</div>
+              <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
+                Requested {r.created_at ? new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'unknown'}
+              </div>
+              {r.note && <div className="text-muted" style={{ fontSize: 12.5, marginTop: 6, fontStyle: 'italic' }}>“{r.note}”</div>}
+            </div>
+            <button className="btn btn-primary" style={{ fontSize: 12 }} disabled={busy === r.id} onClick={() => act(r.id, 'approve')}>Approve</button>
+            <button className="btn btn-secondary" style={{ fontSize: 12 }} disabled={busy === r.id} onClick={() => act(r.id, 'reject')}>Reject</button>
+          </div>
+        ))}
+        {pending.length === 0 && <p className="text-muted" style={{ padding: 20, textAlign: 'center' }}>No pending requests</p>}
+      </div>
+
+      {reviewed.length > 0 && (
+        <>
+          <div className="text-muted" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '26px 0 8px' }}>Reviewed</div>
+          <div style={{ borderTop: '1px solid var(--color-divider)' }}>
+            {reviewed.map(r => (
+              <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 10px', borderBottom: '1px solid var(--color-divider)' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5 }}>{r.email}</div>
+                  <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
+                    {r.status === 'approved' ? 'Approved' : 'Rejected'}
+                    {r.reviewed_by && ` by ${r.reviewed_by}`}
+                  </div>
+                </div>
+                {r.status === 'rejected' && (
+                  <button className="btn btn-ghost" style={{ fontSize: 11 }} disabled={busy === r.id} onClick={() => act(r.id, 'approve')}>Approve</button>
+                )}
+                <button className="btn btn-ghost" style={{ fontSize: 11 }} disabled={busy === r.id} onClick={() => handleDelete(r.id, r.email)}>Delete</button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

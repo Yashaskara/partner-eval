@@ -78,5 +78,13 @@ export const api = {
     addToAllowlist: (email) => request('/admin/allowlist', { method: 'POST', body: { email } }),
     removeFromAllowlist: (email) => request(`/admin/allowlist/${encodeURIComponent(email)}`, { method: 'DELETE' }),
     setUserLimit: (userId, dailyTokenLimit) => request(`/admin/user-limits/${userId}`, { method: 'PUT', body: { dailyTokenLimit } }),
+    getAccessRequests: () => request('/admin/access-requests'),
+    approveAccessRequest: (id) => request(`/admin/access-requests/${id}/approve`, { method: 'POST' }),
+    rejectAccessRequest: (id) => request(`/admin/access-requests/${id}/reject`, { method: 'POST' }),
+    deleteAccessRequest: (id) => request(`/admin/access-requests/${id}`, { method: 'DELETE' }),
+  },
+  accessRequests: {
+    submit: (data) => request('/access-requests', { method: 'POST', body: data }),
+    me: () => request('/access-requests/me'),
   },
 };
