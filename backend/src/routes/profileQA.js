@@ -32,25 +32,7 @@ router.get('/questions/:domain', async (req, res) => {
     domain
   );
 
-  const crossCuttingIds = await db.all(
-    'SELECT question_id FROM profile_question_domains WHERE domain = ?',
-    domain
-  );
-  let crossCutting = [];
-  if (crossCuttingIds.length > 0) {
-    const ids = crossCuttingIds.map(r => r.question_id);
-    crossCutting = await db.all(
-      `SELECT pq.*, GROUP_CONCAT(pqd.domain) as domains
-       FROM profile_questions pq
-       LEFT JOIN profile_question_domains pqd ON pqd.question_id = pq.id
-       WHERE pq.id IN (${ids.map(() => '?').join(',')})
-       GROUP BY pq.id
-       ORDER BY pq.sort_order`,
-      ...ids
-    );
-  }
-
-  const allQuestions = [...domainQuestions, ...crossCutting].map(q => ({
+  const allQuestions = domainQuestions.map(q => ({
     ...q,
     options: typeof q.options_json === 'string' ? JSON.parse(q.options_json) : q.options_json,
     domains: q.domains ? q.domains.split(',') : [q.domain],
