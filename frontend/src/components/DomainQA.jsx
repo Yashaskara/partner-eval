@@ -8,7 +8,7 @@ export default function DomainQA({ domain, onComplete, onClose }) {
   const [answers, setAnswers] = useState({});
   const [currentIdx, setCurrentIdx] = useState(0);
   const [freeText, setFreeText] = useState('');
-  const [selectedOption, setSelectedOption] = useState(null);
+  const [selectedOptions, setSelectedOptions] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [summarizing, setSummarizing] = useState(false);
   const [summary, setSummary] = useState(null);
@@ -32,29 +32,35 @@ export default function DomainQA({ domain, onComplete, onClose }) {
   }
 
   function handleSelect(optionIdx) {
-    setSelectedOption(optionIdx);
+    setSelectedOptions(prev => {
+      const next = new Set(prev);
+      if (next.has(optionIdx)) next.delete(optionIdx);
+      else next.add(optionIdx);
+      return next;
+    });
   }
 
   async function handleNext() {
     const q = questions[currentIdx];
-    if (selectedOption == null) return;
+    const indices = effectiveSelection;
+    if (indices.length === 0) return;
 
-    const optionText = q.options[selectedOption];
+    const texts = indices.map(i => q.options[i]);
     await api.profileQA.submitAnswer({
       questionId: q.id,
-      selectedOptionIndex: selectedOption,
-      selectedOptionText: optionText,
+      selectedOptionIndices: indices,
+      selectedOptionTexts: texts,
       freeText: freeText.trim(),
     });
 
     setAnswers(prev => ({
       ...prev,
-      [q.id]: { selected_option_index: selectedOption, selected_option_text: optionText, free_text: freeText.trim() },
+      [q.id]: { selected_option_indices: indices, selected_option_texts: texts, free_text: freeText.trim() },
     }));
 
     if (currentIdx < questions.length - 1) {
       setCurrentIdx(currentIdx + 1);
-      setSelectedOption(null);
+      setSelectedOptions(new Set());
       setFreeText('');
       containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
@@ -99,8 +105,10 @@ export default function DomainQA({ domain, onComplete, onClose }) {
 
   const q = questions[currentIdx];
   const existingAnswer = answers[q?.id];
-  const effectiveSelection = selectedOption ?? existingAnswer?.selected_option_index ?? null;
-  const effectiveFreeText = freeText || (selectedOption == null ? existingAnswer?.free_text || '' : freeText);
+  const existingIndices = existingAnswer?.selected_option_indices || [];
+  const effectiveSelection = selectedOptions.size > 0 ? [...selectedOptions] : existingIndices;
+  const isSelected = (i) => selectedOptions.size > 0 ? selectedOptions.has(i) : existingIndices.includes(i);
+  const effectiveFreeText = freeText || (selectedOptions.size === 0 ? existingAnswer?.free_text || '' : freeText);
 
   return (
     <div className="dialog-backdrop" onClick={onClose}>
@@ -123,7 +131,7 @@ export default function DomainQA({ domain, onComplete, onClose }) {
           </div>
           {/* Progress bar */}
           <div style={{ height: 3, background: 'var(--color-divider)', borderRadius: 2, marginTop: 12 }}>
-            <div style={{ height: '100%', width: `${((currentIdx + (effectiveSelection != null ? 1 : 0)) / questions.length) * 100}%`, background: 'var(--color-accent)', borderRadius: 2, transition: 'width 0.3s' }} />
+            <div style={{ height: '100%', width: `${((currentIdx + (effectiveSelection.length > 0 ? 1 : 0)) / questions.length) * 100}%`, background: 'var(--color-accent)', borderRadius: 2, transition: 'width 0.3s' }} />
           </div>
         </div>
 
@@ -180,19 +188,22 @@ export default function DomainQA({ domain, onComplete, onClose }) {
               </div>
 
               {/* Options */}
+              <div style={{ fontSize: 12, color: 'var(--color-neutral-500)', marginBottom: 8 }}>Select all that apply</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
                 {(q.options || []).map((opt, i) => (
                   <button
                     key={i}
                     onClick={() => handleSelect(i)}
                     style={{
-                      display: 'block',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
                       width: '100%',
                       textAlign: 'left',
                       padding: '12px 16px',
                       borderRadius: 'var(--radius-md)',
-                      border: effectiveSelection === i ? '1.5px solid var(--color-accent)' : '1px solid var(--color-divider)',
-                      background: effectiveSelection === i ? 'var(--color-accent-100)' : 'transparent',
+                      border: isSelected(i) ? '1.5px solid var(--color-accent)' : '1px solid var(--color-divider)',
+                      background: isSelected(i) ? 'var(--color-accent-100)' : 'transparent',
                       cursor: 'pointer',
                       fontSize: 14,
                       lineHeight: 1.5,
@@ -201,7 +212,16 @@ export default function DomainQA({ domain, onComplete, onClose }) {
                       transition: 'all 0.15s',
                     }}
                   >
-                    {opt}
+                    <span style={{
+                      width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                      border: isSelected(i) ? '1.5px solid var(--color-accent)' : '1.5px solid var(--color-neutral-400)',
+                      background: isSelected(i) ? 'var(--color-accent)' : 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: '#fff', fontSize: 12, fontWeight: 700,
+                    }}>
+                      {isSelected(i) ? '✓' : ''}
+                    </span>
+                    <span>{opt}</span>
                   </button>
                 ))}
               </div>
@@ -227,13 +247,13 @@ export default function DomainQA({ domain, onComplete, onClose }) {
             <button
               className="btn btn-secondary"
               disabled={currentIdx === 0}
-              onClick={() => { setCurrentIdx(currentIdx - 1); setSelectedOption(null); setFreeText(''); }}
+              onClick={() => { setCurrentIdx(currentIdx - 1); setSelectedOptions(new Set()); setFreeText(''); }}
             >
               Back
             </button>
             <button
               className="btn btn-primary"
-              disabled={effectiveSelection == null}
+              disabled={effectiveSelection.length === 0}
               onClick={handleNext}
             >
               {currentIdx === questions.length - 1 ? 'Finish & summarize' : 'Next'}

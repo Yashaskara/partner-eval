@@ -62,7 +62,16 @@ router.get('/questions/:domain', async (req, res) => {
     profileId
   );
   const answerMap = {};
-  for (const a of answers) answerMap[a.question_id] = a;
+  for (const a of answers) {
+    let indices, texts;
+    try { indices = JSON.parse(a.selected_option_index); } catch { indices = a.selected_option_index != null ? [a.selected_option_index] : []; }
+    try { texts = JSON.parse(a.selected_option_text); } catch { texts = a.selected_option_text ? [a.selected_option_text] : []; }
+    answerMap[a.question_id] = {
+      ...a,
+      selected_option_indices: Array.isArray(indices) ? indices : [indices],
+      selected_option_texts: Array.isArray(texts) ? texts : [texts],
+    };
+  }
 
   res.json({ questions: allQuestions, answers: answerMap });
 });
@@ -158,8 +167,12 @@ router.get('/cross-cutting', async (req, res) => {
 
 router.post('/answer', async (req, res) => {
   const profileId = req.profileId;
-  const { questionId, selectedOptionIndex, selectedOptionText, freeText } = req.body;
+  const { questionId, selectedOptionIndices, selectedOptionTexts, freeText,
+          selectedOptionIndex, selectedOptionText } = req.body;
   if (questionId == null) return res.status(400).json({ error: 'questionId required' });
+
+  const indices = selectedOptionIndices ?? (selectedOptionIndex != null ? [selectedOptionIndex] : []);
+  const texts = selectedOptionTexts ?? (selectedOptionText ? [selectedOptionText] : []);
 
   await db.run(
     `INSERT INTO profile_answers (profile_id, question_id, selected_option_index, selected_option_text, free_text)
@@ -169,7 +182,7 @@ router.post('/answer', async (req, res) => {
        selected_option_text = excluded.selected_option_text,
        free_text = excluded.free_text,
        answered_at = datetime('now')`,
-    profileId, questionId, selectedOptionIndex, selectedOptionText || '', freeText || ''
+    profileId, questionId, JSON.stringify(indices), JSON.stringify(texts), freeText || ''
   );
 
   res.json({ ok: true });
@@ -213,7 +226,9 @@ Here are their answers:
 `;
     for (const a of allAnswers) {
       prompt += `Q (${a.layer}): ${a.question_text}\n`;
-      prompt += `Selected: ${a.selected_option_text}\n`;
+      let texts;
+      try { texts = JSON.parse(a.selected_option_text); } catch { texts = [a.selected_option_text]; }
+      prompt += `Selected: ${Array.isArray(texts) ? texts.join('; ') : texts}\n`;
       if (a.free_text) prompt += `Additional thoughts: ${a.free_text}\n`;
       prompt += '\n';
     }
