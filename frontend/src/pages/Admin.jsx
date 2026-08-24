@@ -113,6 +113,11 @@ function UsersTab() {
     return String(n);
   }
 
+  function formatCost(n) {
+    if (n < 0.01) return '<$0.01';
+    return '$' + n.toFixed(2);
+  }
+
   return (
     <div>
       {usage?.allTime && (
@@ -124,6 +129,10 @@ function UsersTab() {
             </div>
           </div>
           <div>
+            <div className="text-muted" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Est. cost</div>
+            <div style={{ fontSize: 28, fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{formatCost(usage.allTime.estimated_cost || 0)}</div>
+          </div>
+          <div>
             <div className="text-muted" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Total calls</div>
             <div style={{ fontSize: 28, fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{usage.allTime.total_calls}</div>
           </div>
@@ -132,7 +141,7 @@ function UsersTab() {
 
       <div style={{ borderTop: '1px solid var(--color-divider)' }}>
         {users.map(u => (
-          <div key={u.id} style={{ display: 'grid', gridTemplateColumns: '1fr 120px 80px', gap: 20, padding: '14px 10px', borderBottom: '1px solid var(--color-divider)', alignItems: 'center' }}>
+          <div key={u.id} style={{ display: 'grid', gridTemplateColumns: '1fr 100px 80px 80px', gap: 16, padding: '14px 10px', borderBottom: '1px solid var(--color-divider)', alignItems: 'center' }}>
             <div>
               <div style={{ fontSize: 14, fontWeight: 500 }}>{u.name || u.email}</div>
               <div className="text-muted" style={{ fontSize: 11 }}>{u.email}</div>
@@ -140,6 +149,10 @@ function UsersTab() {
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: 14, fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{formatTokens(Number(u.total_tokens))}</div>
               <div className="text-muted" style={{ fontSize: 10 }}>tokens</div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 14, fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{formatCost(u.estimated_cost || 0)}</div>
+              <div className="text-muted" style={{ fontSize: 10 }}>est. cost</div>
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: 14, fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{u.total_calls}</div>

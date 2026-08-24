@@ -5,17 +5,46 @@ import db from '../db.js';
 const router = Router();
 router.use(requireAdmin);
 
+// Per-million-token pricing (USD). Input / Output.
+const MODEL_PRICING = {
+  'claude-sonnet-4-5-20250514': { input: 3, output: 15 },
+  'claude-sonnet-4-20250514':   { input: 3, output: 15 },
+  'claude-haiku-3-5-20241022':  { input: 0.80, output: 4 },
+  'gpt-5.6-luna':               { input: 2.50, output: 10 },
+  'gpt-4o':                     { input: 2.50, output: 10 },
+  'gpt-4o-mini':                { input: 0.15, output: 0.60 },
+  'gemini-1.5-pro':             { input: 1.25, output: 5 },
+  'gemini-2.0-flash':           { input: 0.10, output: 0.40 },
+};
+
+function calcCost(model, inputTokens, outputTokens) {
+  const pricing = MODEL_PRICING[model];
+  if (!pricing) return null;
+  return (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000;
+}
+
 router.get('/users', async (req, res) => {
   const users = await db.all(`
     SELECT u.id, u.email, u.name, u.image, u.createdAt,
       COALESCE(SUM(lu.input_tokens + lu.output_tokens), 0) as total_tokens,
       COUNT(lu.id) as total_calls
-    FROM user u
+    FROM "user" u
     LEFT JOIN llm_usage lu ON lu.user_id = u.id
     GROUP BY u.id
     ORDER BY total_tokens DESC
   `);
-  res.json(users);
+
+  const usageByModel = await db.all(`
+    SELECT user_id, model, SUM(input_tokens) as input_tokens, SUM(output_tokens) as output_tokens
+    FROM llm_usage GROUP BY user_id, model
+  `);
+  const costMap = {};
+  for (const row of usageByModel) {
+    const cost = calcCost(row.model, Number(row.input_tokens), Number(row.output_tokens));
+    if (cost != null) costMap[row.user_id] = (costMap[row.user_id] || 0) + cost;
+  }
+
+  res.json(users.map(u => ({ ...u, estimated_cost: costMap[u.id] || 0 })));
 });
 
 router.get('/usage', async (req, res) => {
@@ -29,14 +58,30 @@ router.get('/usage', async (req, res) => {
     GROUP BY user_id, provider, model
   `, today);
 
-  const allTime = await db.get(`
-    SELECT COALESCE(SUM(input_tokens), 0) as total_input,
-      COALESCE(SUM(output_tokens), 0) as total_output,
-      COUNT(*) as total_calls
-    FROM llm_usage
-  `);
+  const dailyWithCost = daily.map(d => ({
+    ...d,
+    estimated_cost: calcCost(d.model, Number(d.input_tokens), Number(d.output_tokens)) || 0,
+  }));
 
-  res.json({ daily, allTime });
+  const allTimeByModel = await db.all(`
+    SELECT model, SUM(input_tokens) as input_tokens, SUM(output_tokens) as output_tokens, COUNT(*) as calls
+    FROM llm_usage GROUP BY model
+  `);
+  let totalCost = 0;
+  let totalInput = 0;
+  let totalOutput = 0;
+  let totalCalls = 0;
+  for (const row of allTimeByModel) {
+    totalInput += Number(row.input_tokens);
+    totalOutput += Number(row.output_tokens);
+    totalCalls += Number(row.calls);
+    totalCost += calcCost(row.model, Number(row.input_tokens), Number(row.output_tokens)) || 0;
+  }
+
+  res.json({
+    daily: dailyWithCost,
+    allTime: { total_input: totalInput, total_output: totalOutput, total_calls: totalCalls, estimated_cost: totalCost },
+  });
 });
 
 router.get('/usage/:userId', async (req, res) => {
@@ -45,7 +90,10 @@ router.get('/usage/:userId', async (req, res) => {
     FROM llm_usage WHERE user_id = ?
     ORDER BY created_at DESC LIMIT 100
   `, req.params.userId);
-  res.json(usage);
+  res.json(usage.map(row => ({
+    ...row,
+    estimated_cost: calcCost(row.model, Number(row.input_tokens), Number(row.output_tokens)) || 0,
+  })));
 });
 
 router.get('/allowlist', async (req, res) => {
