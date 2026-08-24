@@ -46,16 +46,11 @@ export default function DomainQA({ domain, onComplete, onClose }) {
     if (indices.length === 0) return;
 
     const texts = indices.map(i => q.options[i]);
-    await api.profileQA.submitAnswer({
-      questionId: q.id,
-      selectedOptionIndices: indices,
-      selectedOptionTexts: texts,
-      freeText: freeText.trim(),
-    });
+    const trimmedFreeText = freeText.trim();
 
     setAnswers(prev => ({
       ...prev,
-      [q.id]: { selected_option_indices: indices, selected_option_texts: texts, free_text: freeText.trim() },
+      [q.id]: { selected_option_indices: indices, selected_option_texts: texts, free_text: trimmedFreeText },
     }));
 
     if (currentIdx < questions.length - 1) {
@@ -63,7 +58,16 @@ export default function DomainQA({ domain, onComplete, onClose }) {
       setSelectedOptions(new Set());
       setFreeText('');
       containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
+    }
+
+    api.profileQA.submitAnswer({
+      questionId: q.id,
+      selectedOptionIndices: indices,
+      selectedOptionTexts: texts,
+      freeText: trimmedFreeText,
+    }).catch(e => console.error('Failed to save answer:', e));
+
+    if (currentIdx >= questions.length - 1) {
       await handleSummarize();
     }
   }
