@@ -2,8 +2,25 @@ import { useState } from 'react';
 import { signIn } from '../lib/auth-client.js';
 import RequestAccessForm from '../components/RequestAccessForm.jsx';
 
+const isDev = import.meta.env.DEV;
+
 export default function Login() {
   const [requesting, setRequesting] = useState(false);
+
+  async function devLogin() {
+    const email = 'dev@anvaya.local';
+    const password = 'dev-only-not-for-prod';
+    const name = 'Dev User';
+    // Ensure the dev user exists (backend creates it if needed)
+    await fetch('/api/dev-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email, name }),
+    });
+    // Sign in through better-auth's client, which sets cookies properly
+    await signIn.email({ email, password }, { onSuccess: () => window.location.reload() });
+  }
 
   return (
     <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', flexDirection: 'column', gap: 24 }}>
@@ -20,6 +37,15 @@ export default function Login() {
         >
           Sign in with Google
         </button>
+        {isDev && (
+          <button
+            className="btn btn-secondary"
+            style={{ fontSize: 13, padding: '10px 24px', marginTop: 12, display: 'block', marginInline: 'auto' }}
+            onClick={devLogin}
+          >
+            Dev login (skip OAuth)
+          </button>
+        )}
 
         {!requesting ? (
           <>

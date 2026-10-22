@@ -10,6 +10,7 @@ import SelfProfile from './pages/SelfProfile.jsx';
 import Settings from './pages/Settings.jsx';
 import Login from './pages/Login.jsx';
 import Admin from './pages/Admin.jsx';
+import About from './pages/About.jsx';
 import AccessPending from './pages/AccessPending.jsx';
 
 const shellStyle = {
@@ -68,6 +69,7 @@ export default function App() {
         <Route path="/compare" element={<Compare />} />
         <Route path="/profile" element={<SelfProfile />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/about" element={<About />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/login" element={<Login />} />
       </Routes>

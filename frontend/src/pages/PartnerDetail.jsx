@@ -13,6 +13,7 @@ export default function PartnerDetail() {
   const [noteType, setNoteType] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [editingDomains, setEditingDomains] = useState(false);
 
   useEffect(() => { load(); }, [id]);
 
@@ -45,6 +46,10 @@ export default function PartnerDetail() {
   const positives = (partner.notes || []).filter(n => n.type === 'positive');
   const negatives = (partner.notes || []).filter(n => n.type === 'negative');
 
+  const domainMap = {};
+  for (const d of (partner.domains || [])) domainMap[d.domain] = d.answer;
+  const showForm = editingDomains || assessments.length === 0;
+
   return (
     <div className="page">
       <Link to="/" style={{ fontSize: 12.5, textDecoration: 'none' }}>← Roster</Link>
@@ -74,7 +79,9 @@ export default function PartnerDetail() {
 
       {partner.stale && (
         <div className="stale-banner" style={{ marginTop: 24 }}>
-          This read was written before you changed your own profile — the number below still uses the old weighting.
+          {partner.stale_reason === 'partner'
+            ? `This read was written before you last updated what you know about ${partner.name} — recompute to fold the new information in.`
+            : 'This read was written before you changed your own profile — the number below still uses the old weighting.'}
         </div>
       )}
 
@@ -133,15 +140,30 @@ export default function PartnerDetail() {
             </div>
           )}
 
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16, marginBottom: 14 }}>
             <h4 style={{ margin: 0 }}>Domain by domain</h4>
-            <span className="text-muted" style={{ fontSize: 11 }}>Priority weights come from your own profile</span>
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: 14, flex: 'none' }}>
+              <span className="text-muted" style={{ fontSize: 11 }}>Priority weights come from your own profile</span>
+              {assessments.length > 0 && (
+                <button className="btn btn-ghost" style={{ paddingRight: 0 }} onClick={() => setEditingDomains(e => !e)}>
+                  {editingDomains ? 'Done editing' : '✎ Edit what you know'}
+                </button>
+              )}
+            </span>
           </div>
 
-          {assessments.length > 0 ? (
+          {showForm ? (
+            <DomainFormList
+              partnerId={id}
+              domains={partner.domains}
+              scoreMap={scoreMap}
+              onSaved={() => { setEditingDomains(false); load(); }}
+            />
+          ) : (
             DOMAINS.map(d => {
               const a = scoreMap[d.key];
               const state = a ? stateOf(a.score) : 'unknown';
+              const known = (domainMap[d.key] || '').trim();
               return (
                 <div key={d.key} style={{ display: 'grid', gridTemplateColumns: '22px 1fr 64px', gap: 16, padding: '16px 0', borderTop: '1px solid var(--color-divider)', alignItems: 'start' }}>
                   <DomainMark state={state} size="lg" />
@@ -153,6 +175,12 @@ export default function PartnerDetail() {
                       </span>
                     </div>
                     <p className="text-muted" style={{ fontSize: 13.5, margin: 0, lineHeight: 1.6 }}>{a?.reasoning || 'No assessment yet'}</p>
+                    {known && (
+                      <p style={{ fontSize: 12.5, margin: '8px 0 0', lineHeight: 1.6, paddingLeft: 11, borderLeft: '2px solid var(--color-divider)' }}>
+                        <span className="text-muted" style={{ fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>What you recorded</span>
+                        {known}
+                      </p>
+                    )}
                   </div>
                   <div className="num" style={{ fontFamily: 'var(--font-heading)', fontSize: 26, textAlign: 'right', lineHeight: 1 }}>
                     {a ? a.score : '—'}
@@ -160,8 +188,6 @@ export default function PartnerDetail() {
                 </div>
               );
             })
-          ) : (
-            <DomainFormList partnerId={id} domains={partner.domains} onSaved={load} />
           )}
         </div>
       </div>
@@ -172,14 +198,20 @@ export default function PartnerDetail() {
   );
 }
 
-function DomainFormList({ partnerId, domains, onSaved }) {
-  const domainMap = {};
-  for (const d of (domains || [])) domainMap[d.domain] = d.answer;
+function DomainFormList({ partnerId, domains, scoreMap = {}, onSaved }) {
+  const serialized = JSON.stringify((domains || []).map(d => [d.domain, d.answer]));
 
-  const [values, setValues] = useState(
-    DOMAINS.reduce((acc, d) => ({ ...acc, [d.key]: domainMap[d.key] || '' }), {})
-  );
+  const [values, setValues] = useState(() => fromProps(domains));
   const [saving, setSaving] = useState(false);
+
+  // Re-sync when the partner reloads (e.g. after a save elsewhere on the page).
+  useEffect(() => { setValues(fromProps(domains)); }, [serialized]);
+
+  function fromProps(list) {
+    const map = {};
+    for (const d of (list || [])) map[d.domain] = d.answer;
+    return DOMAINS.reduce((acc, d) => ({ ...acc, [d.key]: map[d.key] || '' }), {});
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -194,21 +226,31 @@ function DomainFormList({ partnerId, domains, onSaved }) {
   return (
     <div>
       <p className="text-muted" style={{ fontSize: 13, marginBottom: 16 }}>
-        Fill in what you know — partial information is fine. Save when ready, then run an analysis.
+        Fill in what you know — partial information is fine. Save when ready, then recompute.
       </p>
-      {DOMAINS.map(d => (
-        <div key={d.key} style={{ borderTop: '1px solid var(--color-divider)', padding: '14px 0' }}>
-          <label style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 16, display: 'block', marginBottom: 4 }}>{d.label}</label>
-          <div className="text-muted" style={{ fontSize: 11, marginBottom: 6 }}>{d.hint}</div>
-          <textarea
-            className="input"
-            rows={2}
-            value={values[d.key]}
-            onChange={e => setValues(v => ({ ...v, [d.key]: e.target.value }))}
-            placeholder="What you've learned or observed…"
-          />
-        </div>
-      ))}
+      {DOMAINS.map(d => {
+        const a = scoreMap[d.key];
+        return (
+          <div key={d.key} style={{ borderTop: '1px solid var(--color-divider)', padding: '14px 0' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
+              <label style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 16 }}>{d.label}</label>
+              {a && (
+                <span className="text-muted" style={{ fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  last read · {stateLabel(stateOf(a.score))} · {a.score}
+                </span>
+              )}
+            </div>
+            <div className="text-muted" style={{ fontSize: 11, marginBottom: 6 }}>{d.hint}</div>
+            <textarea
+              className="input"
+              rows={2}
+              value={values[d.key]}
+              onChange={e => setValues(v => ({ ...v, [d.key]: e.target.value }))}
+              placeholder="What you've learned or observed…"
+            />
+          </div>
+        );
+      })}
       <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ marginTop: 12 }}>
         {saving ? 'Saving…' : 'Save domain info'}
       </button>

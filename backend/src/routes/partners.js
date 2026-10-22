@@ -3,6 +3,22 @@ import db, { DOMAINS } from '../db.js';
 
 const router = Router();
 
+// A read goes stale when either side of the comparison has moved since it ran:
+// the user's own profile (changes the weighting) or the partner's domain data
+// (changes the evidence).
+async function stalenessOf(partnerId, profileId, latestRun) {
+  if (!latestRun) return { stale: false, stale_reason: null };
+  const profile = await db.get('SELECT updated_at FROM profiles WHERE id = ?', profileId);
+  const domainEdit = await db.get(
+    'SELECT MAX(updated_at) AS updated_at FROM partner_domains WHERE partner_id = ?', partnerId
+  );
+  const profileStale = profile?.updated_at && latestRun.created_at < profile.updated_at;
+  const domainStale = domainEdit?.updated_at && latestRun.created_at < domainEdit.updated_at;
+  if (domainStale) return { stale: true, stale_reason: 'partner' };
+  if (profileStale) return { stale: true, stale_reason: 'profile' };
+  return { stale: false, stale_reason: null };
+}
+
 router.get('/', async (req, res) => {
   const { status, includeDeleted } = req.query;
   const profileId = req.profileId;
@@ -29,9 +45,8 @@ router.get('/', async (req, res) => {
       ? await db.all('SELECT * FROM domain_assessments WHERE run_id = ?', latestRun.id)
       : [];
     const notes = await db.all('SELECT * FROM positives_negatives WHERE partner_id = ? ORDER BY created_at DESC', p.id);
-    const profile = await db.get('SELECT updated_at FROM profiles WHERE id = ?', profileId);
-    const stale = latestRun && profile?.updated_at && latestRun.created_at < profile.updated_at;
-    enriched.push({ ...p, domains, latestRun, assessments, notes, stale });
+    const { stale, stale_reason } = await stalenessOf(p.id, profileId, latestRun);
+    enriched.push({ ...p, domains, latestRun, assessments, notes, stale, stale_reason });
   }
 
   res.json(enriched);
@@ -48,10 +63,9 @@ router.get('/:id', async (req, res) => {
     ? await db.all('SELECT * FROM domain_assessments WHERE run_id = ?', latestRun.id)
     : [];
   const notes = await db.all('SELECT * FROM positives_negatives WHERE partner_id = ? ORDER BY created_at DESC', partner.id);
-  const profile = await db.get('SELECT updated_at FROM profiles WHERE id = ?', partner.profile_id);
-  const stale = latestRun && profile?.updated_at && latestRun.created_at < profile.updated_at;
+  const { stale, stale_reason } = await stalenessOf(partner.id, partner.profile_id, latestRun);
 
-  res.json({ ...partner, domains, runs, assessments, notes, stale });
+  res.json({ ...partner, domains, runs, assessments, notes, stale, stale_reason });
 });
 
 router.post('/', async (req, res) => {

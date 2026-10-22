@@ -25,7 +25,7 @@ export const auth = betterAuth({
     'http://localhost:5173',
     'http://localhost:3001',
   ],
-  emailAndPassword: { enabled: false },
+  emailAndPassword: { enabled: process.env.NODE_ENV !== 'production' },
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID || '',

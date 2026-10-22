@@ -11,6 +11,7 @@ export default function Nav({ user }) {
       <NavLink to="/compare">Compare</NavLink>
       <NavLink to="/profile">Your profile</NavLink>
       <NavLink to="/settings">Settings</NavLink>
+      <NavLink to="/about">About</NavLink>
       {isAdmin && <NavLink to="/admin">Admin</NavLink>}
       <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
         {user?.image && (
