@@ -29,7 +29,7 @@ def _get_active_provider(user_id: str) -> str:
     )
 
 
-@router.get("/")
+@router.get("")
 def list_conversations(user: AuthenticatedUser = Depends(require_auth)):
     return db.all(
         "SELECT * FROM conversations WHERE profile_id = ? ORDER BY started_at DESC",
@@ -37,7 +37,7 @@ def list_conversations(user: AuthenticatedUser = Depends(require_auth)):
     )
 
 
-@router.post("/")
+@router.post("")
 async def create_conversation(body: dict, user: AuthenticatedUser = Depends(require_auth)):
     result = db.run(
         "INSERT INTO conversations (profile_id, domain) VALUES (?, ?)",

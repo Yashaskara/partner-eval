@@ -30,7 +30,7 @@ def _throttled(ip: str) -> bool:
     return False
 
 
-@router.post("/")
+@router.post("")
 async def submit_request(request: Request):
     body = await request.json()
     email = str(body.get("email", "")).lower().strip()

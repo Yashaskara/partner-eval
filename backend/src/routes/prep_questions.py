@@ -74,7 +74,7 @@ Return ONLY the JSON object."""
     return text
 
 
-@router.get("/")
+@router.get("")
 def list_prep_questions(user: AuthenticatedUser = Depends(require_auth)):
     return db.all(
         "SELECT * FROM prep_questions WHERE profile_id = ? ORDER BY priority ASC, id ASC",
@@ -112,7 +112,7 @@ def generate_prep_questions(user: AuthenticatedUser = Depends(check_token_limit)
     )
 
 
-@router.delete("/")
+@router.delete("")
 def clear_prep_questions(user: AuthenticatedUser = Depends(require_auth)):
     db.run("DELETE FROM prep_questions WHERE profile_id = ?", user.profile_id)
     return {"ok": True}

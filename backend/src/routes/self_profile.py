@@ -10,7 +10,7 @@ from ..middleware import AuthenticatedUser, require_auth
 router = APIRouter(prefix="/api/self-profile")
 
 
-@router.get("/")
+@router.get("")
 def get_self_profile(user: AuthenticatedUser = Depends(require_auth)):
     profile = db.get("SELECT * FROM profiles WHERE id = ?", user.profile_id)
     domains = db.all(

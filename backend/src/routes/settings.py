@@ -38,7 +38,7 @@ def _mask_key(key: str | None) -> str | None:
     return "····" + key[-4:]
 
 
-@router.get("/")
+@router.get("")
 def get_settings(user: AuthenticatedUser = Depends(require_auth)):
     user_pref = db.get(
         "SELECT value FROM user_settings WHERE user_id = ? AND key = 'active_provider'",

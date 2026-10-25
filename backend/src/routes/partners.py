@@ -24,7 +24,7 @@ def _staleness_of(partner_id: int, profile_id: int, latest_run: dict | None) -> 
     return {"stale": False, "stale_reason": None}
 
 
-@router.get("/")
+@router.get("")
 def list_partners(status: str | None = None, includeDeleted: str | None = None,
                   user: AuthenticatedUser = Depends(require_auth)):
     profile_id = user.profile_id
@@ -76,7 +76,7 @@ def get_partner(partner_id: int, user: AuthenticatedUser = Depends(require_auth)
     return {**partner, "domains": domains, "runs": runs, "assessments": assessments, "notes": notes, **staleness}
 
 
-@router.post("/")
+@router.post("")
 async def create_partner(body: dict, user: AuthenticatedUser = Depends(require_auth)):
     name = body.get("name")
     if not name:
