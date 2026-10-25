@@ -9,17 +9,8 @@ export default function Login() {
 
   async function devLogin() {
     const email = 'dev@anvaya.local';
-    const password = 'dev-only-not-for-prod';
     const name = 'Dev User';
-    // Ensure the dev user exists (backend creates it if needed)
-    await fetch('/api/dev-login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ email, name }),
-    });
-    // Sign in through better-auth's client, which sets cookies properly
-    await signIn.email({ email, password }, { onSuccess: () => window.location.reload() });
+    await signIn.email({ email, name }, { onSuccess: () => window.location.reload() });
   }
 
   return (
