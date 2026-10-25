@@ -9,3 +9,5 @@ partner-eval.db
 .vercel/
 .vercel
 .claude/settings.local.json
+interview-prep
+docs

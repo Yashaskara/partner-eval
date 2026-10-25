@@ -59,7 +59,7 @@ Everything happens in the app itself — no dependency on a live Claude conversa
 
 ## 6. Screens
 
-UI mockups were produced and reviewed (Kindred Dashboard prototype) covering every screen below; the choices made against that prototype are locked in here.
+UI mockups were produced and reviewed (Anvaya Dashboard prototype) covering every screen below; the choices made against that prototype are locked in here.
 
 1. **Roster** (home): all partners, status filter (All/Active/Paused/Closed), composite score, domain strip, latest analysis date, stale-score badge, red-flag indicator if any domain is red. **View toggle between card grid and ranked list** — both layouts are kept as a persistent user preference, not a one-time design choice.
 2. **Partner detail**: two-column dossier layout — sidebar with at-a-glance domain strip, positives/negatives (with add-note action), and analysis-run history (date, model, score); main column with the overall LLM narrative summary and domain-by-domain breakdown (mark, label, priority, written reasoning, score). "Recompute" action, stale-score explanation banner naming which self-profile change made it stale.
