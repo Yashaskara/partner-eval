@@ -251,13 +251,16 @@ const DOMAINS = [
   'children', 'intimacy', 'hobbies', 'health', 'social', 'history'
 ];
 
-// Seed allowlisted emails
-const seedEmails = [
-  'kryj999@gmail.com',
-  'shivameera4@gmail.com',
-];
+// Seed allowlisted emails from env vars
+const seedEmails = [];
 if (process.env.ADMIN_EMAIL) {
   seedEmails.push(process.env.ADMIN_EMAIL.toLowerCase().trim());
+}
+if (process.env.ALLOWLIST_EMAILS) {
+  for (const e of process.env.ALLOWLIST_EMAILS.split(',')) {
+    const trimmed = e.trim().toLowerCase();
+    if (trimmed) seedEmails.push(trimmed);
+  }
 }
 for (const email of [...new Set(seedEmails)]) {
   await client.execute({

@@ -1,10 +1,11 @@
 node_modules/
 dist/
 .env
+!.env.example
 partner-eval.db
 *.db-journal
 *.db-wal
 *.db-shm
 .vercel/
 .vercel
-.env*
+.claude/settings.local.json
