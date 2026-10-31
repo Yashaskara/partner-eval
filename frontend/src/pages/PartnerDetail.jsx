@@ -1,11 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { DOMAINS, STATUS_LABEL, stateOf, stateLabel, scoreColor, weight } from '../domains.js';
+import { runAnalysis } from '../lib/analysisStream.js';
 import DomainStrip from '../components/DomainStrip.jsx';
 import DomainMark from '../components/DomainMark.jsx';
 import Dialog from '../components/Dialog.jsx';
 import { useToast } from '../components/Toast.jsx';
+
+const ANALYSIS_STATUS = {
+  reconnecting: 'Connection dropped. Your analysis is still finishing…',
+  fallback: 'Finishing your analysis without live updates…',
+};
 
 export default function PartnerDetail() {
   const { id } = useParams();
@@ -16,8 +22,13 @@ export default function PartnerDetail() {
   const [analyzing, setAnalyzing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editingDomains, setEditingDomains] = useState(false);
+  const [draft, setDraft] = useState(null);
+  const analysisRef = useRef(null);
 
-  useEffect(() => { load(); }, [id]);
+  useEffect(() => {
+    load();
+    return () => analysisRef.current?.abort();
+  }, [id]);
 
   async function load() {
     try {
@@ -28,12 +39,26 @@ export default function PartnerDetail() {
   }
 
   async function handleAnalyze() {
+    const controller = new AbortController();
+    analysisRef.current = controller;
     setAnalyzing(true);
+    setDraft({ summary: '', assessments: {}, status: null });
     try {
-      await api.analysis.run(id);
-      await load();
-    } catch (e) { toast('Analysis failed: ' + e.message); }
-    setAnalyzing(false);
+      await runAnalysis(id, {
+        signal: controller.signal,
+        onSummary: text => setDraft(d => d && { ...d, summary: d.summary + text }),
+        onAssessment: a => setDraft(d => d && { ...d, assessments: { ...d.assessments, [a.domain]: a } }),
+        onStatus: status => setDraft(d => d && { ...d, status }),
+      });
+      if (!controller.signal.aborted) await load();
+    } catch (e) {
+      if (!controller.signal.aborted) toast(`Analysis failed: ${e.message}. Your last result is unchanged, so you can try again.`);
+    }
+    if (analysisRef.current === controller) {
+      analysisRef.current = null;
+      setDraft(null);
+      setAnalyzing(false);
+    }
   }
 
   if (loading) return <div className="page" style={{ paddingTop: 120, textAlign: 'center' }}>Loading…</div>;
@@ -135,7 +160,19 @@ export default function PartnerDetail() {
 
         {/* Main column */}
         <div>
-          {latestRun && (
+          {draft && (
+            <div aria-live="polite" style={{ border: '1px solid var(--color-divider)', borderRadius: 'var(--radius-md)', padding: '22px 24px', marginBottom: 30 }}>
+              <div className="card-kicker" style={{ marginBottom: 8 }}>
+                Writing a new read · {Object.keys(draft.assessments).length} of {DOMAINS.length} domains
+              </div>
+              <p style={{ fontSize: 15.5, lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>
+                {draft.summary || <span className="text-muted">Reading both profiles…</span>}
+              </p>
+              {draft.status && <p className="text-muted" style={{ fontSize: 12.5, margin: '10px 0 0' }}>{ANALYSIS_STATUS[draft.status]}</p>}
+            </div>
+          )}
+
+          {latestRun && !draft && (
             <div style={{ border: '1px solid var(--color-divider)', borderRadius: 'var(--radius-md)', padding: '22px 24px', marginBottom: 30 }}>
               <div className="card-kicker" style={{ marginBottom: 8 }}>The overall read · {latestRun.model}</div>
               <p style={{ fontSize: 15.5, lineHeight: 1.7, margin: 0, textAlign: 'justify', hyphens: 'auto' }}>{latestRun.summary}</p>
@@ -163,7 +200,8 @@ export default function PartnerDetail() {
             />
           ) : (
             DOMAINS.map(d => {
-              const a = scoreMap[d.key];
+              const fresh = draft?.assessments[d.key];
+              const a = fresh || scoreMap[d.key];
               const state = a ? stateOf(a.score) : 'unknown';
               const known = (domainMap[d.key] || '').trim();
               return (
@@ -173,7 +211,7 @@ export default function PartnerDetail() {
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
                       <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 16 }}>{d.label}</span>
                       <span className="text-muted" style={{ fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                        {a ? `${stateLabel(state)}` : 'not assessed'}
+                        {a ? `${stateLabel(state)}${fresh ? ' · new' : ''}` : 'not assessed'}
                       </span>
                     </div>
                     <p className="text-muted" style={{ fontSize: 13.5, margin: 0, lineHeight: 1.6 }}>{a?.reasoning || 'No assessment yet'}</p>

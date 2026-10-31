@@ -13,7 +13,7 @@ async function request(path, options = {}) {
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || 'Request failed');
+    throw new Error(err.error || err.detail?.error || (typeof err.detail === 'string' && err.detail) || 'Request failed');
   }
   return res.json();
 }
@@ -59,7 +59,8 @@ export const api = {
     applyUpdates: (id, updates) => request(`/conversations/${id}/apply-updates`, { method: 'POST', body: { updates } }),
   },
   analysis: {
-    run: (partnerId) => request(`/analysis/${partnerId}`, { method: 'POST' }),
+    run: (partnerId, requestId) => request(`/analysis/${partnerId}`, { method: 'POST', body: { requestId } }),
+    getRun: (partnerId, requestId) => request(`/analysis/${partnerId}/runs/${requestId}`),
   },
   prepQuestions: {
     list: () => request('/prep-questions'),

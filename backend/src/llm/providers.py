@@ -29,6 +29,20 @@ class AnthropicProvider:
             },
         }
 
+    def stream_analyze(self, prompt: str):
+        with self.client.messages.stream(
+            model=self.model,
+            max_tokens=4096,
+            messages=[{"role": "user", "content": prompt}],
+        ) as stream:
+            for text in stream.text_stream:
+                yield {"text": text}
+            usage = stream.get_final_message().usage
+        yield {"usage": {
+            "input_tokens": usage.input_tokens or 0,
+            "output_tokens": usage.output_tokens or 0,
+        }}
+
     def chat(self, system: str, messages: list[dict]) -> dict:
         response = self.client.messages.create(
             model=self.model,
@@ -64,6 +78,23 @@ class OpenAIProvider:
                 "output_tokens": response.usage.completion_tokens or 0,
             },
         }
+
+    def stream_analyze(self, prompt: str):
+        stream = self.client.chat.completions.create(
+            model=self.model,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            stream=True,
+            stream_options={"include_usage": True},
+        )
+        for chunk in stream:
+            if chunk.usage:
+                yield {"usage": {
+                    "input_tokens": chunk.usage.prompt_tokens or 0,
+                    "output_tokens": chunk.usage.completion_tokens or 0,
+                }}
+            if chunk.choices and chunk.choices[0].delta.content:
+                yield {"text": chunk.choices[0].delta.content}
 
     def chat(self, system: str, messages: list[dict]) -> dict:
         response = self.client.chat.completions.create(

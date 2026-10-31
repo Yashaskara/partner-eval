@@ -1,13 +1,26 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+import json
+import logging
+import queue
+import re
+import threading
+from typing import Annotated
+
+from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 
 from ..db import DOMAINS, db
 from ..llm.meter import log_usage
 from ..llm.providers import get_provider
+from ..llm.stream_parser import AnalysisStreamParser, parse_analysis_text
 from ..middleware import AuthenticatedUser, require_auth, check_token_limit
 
 router = APIRouter(prefix="/api/analysis")
+logger = logging.getLogger(__name__)
+
+_REQUEST_ID = re.compile(r"[A-Za-z0-9-]{8,64}")
+_KEEPALIVE_SECONDS = 10
 
 DOMAIN_LABELS = {
     "lifestyle": "Lifestyle", "career": "Career", "family": "Family",
@@ -94,47 +107,179 @@ Return ONLY the JSON object, no markdown fences or other text."""
     return text
 
 
-@router.post("/{partner_id}")
-def run_analysis(partner_id: int, user: AuthenticatedUser = Depends(check_token_limit)):
+def _request_id(value) -> str:
+    if not isinstance(value, str) or not _REQUEST_ID.fullmatch(value):
+        raise HTTPException(status_code=400, detail="Invalid requestId")
+    return value
+
+
+def _load_partner(partner_id: int, user_id: str) -> dict:
     partner = db.get(
         "SELECT * FROM partners WHERE id = ? AND user_id = ? AND deleted_at IS NULL",
-        partner_id, user["id"],
+        partner_id, user_id,
     )
     if not partner:
         raise HTTPException(status_code=404, detail="Partner not found")
+    return partner
 
+
+def _build_analysis_input(partner: dict) -> tuple[str, list[dict]]:
     partner_domains = db.all(
-        "SELECT domain, answer FROM partner_domains WHERE partner_id = ?", partner_id,
+        "SELECT domain, answer FROM partner_domains WHERE partner_id = ?", partner["id"],
     )
     self_domains = db.all(
         "SELECT domain, answer, priority FROM profile_domains WHERE profile_id = ?",
         partner["profile_id"],
     )
+    return _build_prompt(partner, partner_domains, self_domains), self_domains
 
+
+def _find_run(partner_id: int, request_id: str) -> dict | None:
+    run = db.get(
+        "SELECT * FROM analysis_runs WHERE partner_id = ? AND request_id = ?", partner_id, request_id,
+    )
+    if not run:
+        return None
+    assessments = db.all(
+        "SELECT domain, tag, score, reasoning FROM domain_assessments WHERE run_id = ?", run["id"],
+    )
+    return {
+        "runId": run["id"], "composite": run["composite_score"],
+        "summary": run["summary"], "assessments": assessments,
+    }
+
+
+def _save_run(partner_id: int, provider_name: str, model: str, result: dict,
+              self_domains: list[dict], request_id: str | None) -> dict:
+    try:
+        with db.transaction() as tx:
+            run = tx.run(
+                "INSERT INTO analysis_runs (partner_id, provider, model, summary, composite_score, request_id) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                partner_id, provider_name, model, result["summary"], 0, request_id,
+            )
+            run_id = run["lastInsertRowid"]
+
+            for a in result["assessments"]:
+                tx.run(
+                    "INSERT INTO domain_assessments (run_id, partner_id, domain, tag, score, reasoning) VALUES (?, ?, ?, ?, ?, ?)",
+                    run_id, partner_id, a["domain"], a["tag"], a["score"], a["reasoning"],
+                )
+
+            composite = _compute_composite(result["assessments"], self_domains)
+            tx.run("UPDATE analysis_runs SET composite_score = ? WHERE id = ?", composite, run_id)
+            tx.commit()
+    except Exception:
+        # The stream and its fallback can race on one requestId; the unique index lets only one win.
+        existing = _find_run(partner_id, request_id) if request_id else None
+        if existing:
+            return existing
+        raise
+
+    return {"runId": run_id, "composite": composite, "summary": result["summary"], "assessments": result["assessments"]}
+
+
+def _run_stream_job(events: queue.Queue, *, user_id: str, partner_id: int, provider_name: str, provider,
+                    prompt: str, self_domains: list[dict], request_id: str) -> None:
+    received_text = False
+    try:
+        events.put({"type": "started"})
+        parser = AnalysisStreamParser()
+        chunks: list[str] = []
+        usage = None
+        for item in provider.stream_analyze(prompt):
+            if "usage" in item:
+                usage = item["usage"]
+                continue
+            received_text = True
+            chunks.append(item["text"])
+            for event in parser.feed(item["text"]):
+                events.put(event)
+
+        if usage:
+            log_usage(user_id, provider_name, provider.model, "analysis:stream", usage)
+        result = parse_analysis_text("".join(chunks))
+        saved = _save_run(partner_id, provider_name, provider.model, result, self_domains, request_id)
+        events.put({"type": "done", **saved})
+    except Exception:
+        logger.exception("Streaming analysis failed for partner %s", partner_id)
+        events.put({"type": "error", "retryable": not received_text})
+    finally:
+        events.put(None)
+
+
+def _sse(events: queue.Queue):
+    while True:
+        try:
+            event = events.get(timeout=_KEEPALIVE_SECONDS)
+        except queue.Empty:
+            yield ": keep-alive\n\n"
+            continue
+        if event is None:
+            return
+        yield f"data: {json.dumps(event)}\n\n"
+
+
+@router.post("/{partner_id}")
+def run_analysis(partner_id: int, body: Annotated[dict | None, Body()] = None,
+                 user: AuthenticatedUser = Depends(check_token_limit)):
+    request_id = _request_id(body["requestId"]) if body and body.get("requestId") is not None else None
+    partner = _load_partner(partner_id, user["id"])
+
+    if request_id:
+        existing = _find_run(partner_id, request_id)
+        if existing:
+            return existing
+
+    prompt, self_domains = _build_analysis_input(partner)
     active_provider = _get_active_provider(user["id"])
     provider = get_provider(active_provider)
 
-    prompt = _build_prompt(partner, partner_domains, self_domains)
     result_data = provider.analyze(prompt)
     log_usage(user["id"], active_provider, provider.model, "analysis:run", result_data["usage"])
 
-    result = result_data["result"]
+    return _save_run(partner_id, active_provider, provider.model, result_data["result"], self_domains, request_id)
 
-    with db.transaction() as tx:
-        run = tx.run(
-            "INSERT INTO analysis_runs (partner_id, provider, model, summary, composite_score) VALUES (?, ?, ?, ?, ?)",
-            partner_id, active_provider, provider.model, result["summary"], 0,
-        )
-        run_id = run["lastInsertRowid"]
 
-        for a in result["assessments"]:
-            tx.run(
-                "INSERT INTO domain_assessments (run_id, partner_id, domain, tag, score, reasoning) VALUES (?, ?, ?, ?, ?, ?)",
-                run_id, partner_id, a["domain"], a["tag"], a["score"], a["reasoning"],
-            )
+@router.post("/{partner_id}/stream")
+def stream_analysis(partner_id: int, body: dict, user: AuthenticatedUser = Depends(check_token_limit)):
+    request_id = _request_id(body.get("requestId"))
+    partner = _load_partner(partner_id, user["id"])
 
-        composite = _compute_composite(result["assessments"], self_domains)
-        tx.run("UPDATE analysis_runs SET composite_score = ? WHERE id = ?", composite, run_id)
-        tx.commit()
+    events: queue.Queue = queue.Queue()
+    existing = _find_run(partner_id, request_id)
+    if existing:
+        events.put({"type": "done", **existing})
+        events.put(None)
+    else:
+        active_provider = _get_active_provider(user["id"])
+        provider = get_provider(active_provider)
+        if not hasattr(provider, "stream_analyze"):
+            raise HTTPException(status_code=501, detail="Streaming is not available for this provider")
 
-        return {"runId": run_id, "composite": composite, "summary": result["summary"], "assessments": result["assessments"]}
+        prompt, self_domains = _build_analysis_input(partner)
+        # Runs outside the response so a closed tab still finishes and saves the paid LLM call.
+        threading.Thread(
+            target=_run_stream_job,
+            args=(events,),
+            kwargs={
+                "user_id": user["id"], "partner_id": partner_id, "provider_name": active_provider,
+                "provider": provider, "prompt": prompt, "self_domains": self_domains, "request_id": request_id,
+            },
+            daemon=True,
+        ).start()
+
+    return StreamingResponse(
+        _sse(events),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@router.get("/{partner_id}/runs/{request_id}")
+def get_run(partner_id: int, request_id: str, user: AuthenticatedUser = Depends(require_auth)):
+    _load_partner(partner_id, user["id"])
+    run = _find_run(partner_id, _request_id(request_id))
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    return run

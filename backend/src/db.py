@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import threading
+
 import libsql_experimental as libsql
 from pathlib import Path
 
@@ -16,24 +18,34 @@ _DB_PATH = Path(__file__).resolve().parent.parent.parent / "partner-eval.db"
 def _connect() -> libsql.Connection:
     url = config.TURSO_DATABASE_URL
     if url:
-        return libsql.connect(url, auth_token=config.TURSO_AUTH_TOKEN or "")
-    return libsql.connect(str(_DB_PATH))
+        conn = libsql.connect(url, auth_token=config.TURSO_AUTH_TOKEN or "")
+    else:
+        conn = libsql.connect(str(_DB_PATH))
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn
 
 
-_conn: libsql.Connection | None = None
+# One connection per thread: a shared one would let concurrent requests run inside another request's transaction.
+_local = threading.local()
+_schema_lock = threading.Lock()
+_schema_ready = False
 
 
 def _get_conn() -> libsql.Connection:
-    global _conn
-    if _conn is None:
-        _conn = _connect()
-        _init_schema(_conn)
-    return _conn
+    global _schema_ready
+    conn = getattr(_local, "conn", None)
+    if conn is None:
+        conn = _connect()
+        _local.conn = conn
+    if not _schema_ready:
+        with _schema_lock:
+            if not _schema_ready:
+                _init_schema(conn)
+                _schema_ready = True
+    return conn
 
 
 def _init_schema(conn: libsql.Connection) -> None:
-    conn.execute("PRAGMA foreign_keys = ON")
-
     # --- better-auth tables (kept for compatibility with existing data) ---
     conn.execute('''CREATE TABLE IF NOT EXISTS "user" (
         id TEXT PRIMARY KEY,
@@ -242,11 +254,16 @@ def _init_schema(conn: libsql.Connection) -> None:
         'ALTER TABLE prep_questions ADD COLUMN user_id TEXT',
         'ALTER TABLE conversations ADD COLUMN user_id TEXT',
         "ALTER TABLE \"account\" ADD COLUMN issuer TEXT NOT NULL DEFAULT ''",
+        'ALTER TABLE analysis_runs ADD COLUMN request_id TEXT',
     ]:
         try:
             conn.execute(sql)
         except Exception:
             pass
+
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_analysis_runs_request_id ON analysis_runs(request_id)"
+    )
 
     # Seed allowlisted emails from env
     seed_emails: set[str] = set()

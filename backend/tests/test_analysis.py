@@ -5,6 +5,7 @@ os.environ["TURSO_DATABASE_URL"] = ""
 os.environ["TURSO_AUTH_TOKEN"] = ""
 
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -44,7 +45,8 @@ class RunAnalysisTest(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         for patcher in (
             mock.patch.object(db_module, "_DB_PATH", Path(tmp.name) / "test.db"),
-            mock.patch.object(db_module, "_conn", None),
+            mock.patch.object(db_module, "_local", threading.local()),
+            mock.patch.object(db_module, "_schema_ready", False),
         ):
             patcher.start()
             self.addCleanup(patcher.stop)
