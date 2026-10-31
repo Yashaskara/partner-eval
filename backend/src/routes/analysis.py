@@ -120,8 +120,7 @@ def run_analysis(partner_id: int, user: AuthenticatedUser = Depends(check_token_
 
     result = result_data["result"]
 
-    tx = db.transaction()
-    try:
+    with db.transaction() as tx:
         run = tx.run(
             "INSERT INTO analysis_runs (partner_id, provider, model, summary, composite_score) VALUES (?, ?, ?, ?, ?)",
             partner_id, active_provider, provider.model, result["summary"], 0,
@@ -139,6 +138,3 @@ def run_analysis(partner_id: int, user: AuthenticatedUser = Depends(check_token_
         tx.commit()
 
         return {"runId": run_id, "composite": composite, "summary": result["summary"], "assessments": result["assessments"]}
-    except Exception:
-        tx.rollback()
-        raise
