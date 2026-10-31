@@ -31,18 +31,21 @@ The composite score is computed deterministically (weighted average by your prio
 ## Architecture
 
 ```
-frontend/          React 19 + Vite — SPA with vanilla CSS tokens
-  src/pages/       7 page components (Roster, PartnerDetail, Compare, SelfProfile, Settings, Admin, Login)
-  src/components/  Shared UI (DomainStrip, DomainQA, ProfileConversation, Dialog, Nav)
+frontend/              React 19 + Vite — SPA with vanilla CSS tokens
+  src/pages/           7 page components (Roster, PartnerDetail, Compare, SelfProfile, Settings, Admin, Login)
+  src/components/      Shared UI (DomainStrip, DomainQA, ProfileConversation, Dialog, Nav)
 
-backend/           Node.js + Express — REST API
-  src/routes/      9 route modules (partners, selfProfile, analysis, prepQuestions, profileQA, conversations, settings, admin, accessRequests)
-  src/llm/         Pluggable provider layer (Anthropic, OpenAI, Gemini) with token metering
-  src/middleware/   Auth (better-auth + Google OAuth), allowlist gate, token-limit enforcement
+backend/               Python + FastAPI — REST API
+  src/routes/          9 route modules (partners, self_profile, analysis, prep_questions, profile_qa, conversations, settings, admin, access_requests)
+  src/llm/             Pluggable provider layer (Anthropic, OpenAI, Gemini) with token metering
+  src/middleware.py     Auth (Google OAuth via httpx), allowlist gate, token-limit enforcement
+  src/db.py            Turso/libsql client with migration runner
 
-Database:          SQLite (local dev) / Turso libsql (production)
-Deployment:        Vercel (serverless functions + static frontend)
-Auth:              Google OAuth via better-auth, invite-only allowlist
+api/index.py           Vercel serverless entry point
+
+Database:              SQLite (local dev) / Turso libsql (production)
+Deployment:            Vercel (Python serverless functions + static frontend)
+Auth:                  Google OAuth, invite-only allowlist
 ```
 
 ## Key design decisions
@@ -56,22 +59,29 @@ Auth:              Google OAuth via better-auth, invite-only allowlist
 
 ### Prerequisites
 
-- Node.js 20+
+- Python 3.11+
+- Node.js 20+ (for the frontend)
 - Google OAuth credentials ([create here](https://console.cloud.google.com/apis/credentials))
 - At least one LLM API key (Anthropic, OpenAI, or Google)
 
 ### Local development
 
 ```bash
-# Install dependencies
-npm run install:all
+# Frontend: install dependencies
+cd frontend && npm install && cd ..
+
+# Backend: create virtual environment and install
+cd backend && python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt && cd ..
 
 # Copy and fill in environment variables
 cp .env.example .env
 # Edit .env with your API keys, OAuth credentials, and admin email
 
-# Start both backend and frontend
-npm run dev
+# Start the backend
+cd backend && uvicorn src.main:app --reload --port 3001
+
+# In another terminal, start the frontend
+cd frontend && npm run dev
 ```
 
 The backend runs on `http://localhost:3001`, the frontend on `http://localhost:5173`.
@@ -92,15 +102,15 @@ See [`.env.example`](.env.example) for the full list. The essential ones:
 
 ### Deploy to Vercel
 
-The project is configured for Vercel deployment. Connect the repo and set the environment variables in the Vercel dashboard.
+The project is configured for Vercel deployment. Connect the repo and set the environment variables in the Vercel dashboard. The backend runs as a Python serverless function via `api/index.py`.
 
 ## Tech stack
 
 - **Frontend**: React 19, React Router 7, Vite 6
-- **Backend**: Express 4, better-auth
+- **Backend**: Python, FastAPI, Pydantic
 - **Database**: SQLite (local) / Turso libsql (production)
 - **LLM**: Anthropic Claude, OpenAI GPT, Google Gemini (pluggable)
-- **Deployment**: Vercel
+- **Deployment**: Vercel (Python runtime)
 
 ## License
 
