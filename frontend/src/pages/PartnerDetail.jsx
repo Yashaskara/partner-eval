@@ -5,9 +5,11 @@ import { DOMAINS, STATUS_LABEL, stateOf, stateLabel, scoreColor, weight } from '
 import DomainStrip from '../components/DomainStrip.jsx';
 import DomainMark from '../components/DomainMark.jsx';
 import Dialog from '../components/Dialog.jsx';
+import { useToast } from '../components/Toast.jsx';
 
 export default function PartnerDetail() {
   const { id } = useParams();
+  const toast = useToast();
   const [partner, setPartner] = useState(null);
   const [editing, setEditing] = useState(null);
   const [noteType, setNoteType] = useState(null);
@@ -30,7 +32,7 @@ export default function PartnerDetail() {
     try {
       await api.analysis.run(id);
       await load();
-    } catch (e) { alert('Analysis failed: ' + e.message); }
+    } catch (e) { toast('Analysis failed: ' + e.message); }
     setAnalyzing(false);
   }
 

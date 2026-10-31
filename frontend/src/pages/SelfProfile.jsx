@@ -5,6 +5,7 @@ import DomainMark from '../components/DomainMark.jsx';
 import Dialog from '../components/Dialog.jsx';
 import DomainQA from '../components/DomainQA.jsx';
 import ProfileConversation from '../components/ProfileConversation.jsx';
+import { useToast } from '../components/Toast.jsx';
 
 export default function SelfProfile() {
   const [tab, setTab] = useState('profile');
@@ -227,6 +228,7 @@ function EditDomainDialog({ domain, domainLabel, current, onClose, onSaved }) {
 }
 
 function PrepTab({ questions, onRegenerated }) {
+  const toast = useToast();
   const [generating, setGenerating] = useState(false);
 
   async function handleRegenerate() {
@@ -234,7 +236,7 @@ function PrepTab({ questions, onRegenerated }) {
     try {
       await api.prepQuestions.generate();
       onRegenerated();
-    } catch (e) { alert('Generation failed: ' + e.message); }
+    } catch (e) { toast('Generation failed: ' + e.message); }
     setGenerating(false);
   }
 

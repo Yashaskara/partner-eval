@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../api.js';
 import { DOMAINS, PRIORITY_WORD } from '../domains.js';
+import { useToast } from './Toast.jsx';
 
 export default function DomainQA({ domain, onComplete, onClose }) {
+  const toast = useToast();
   const domainInfo = DOMAINS.find(d => d.key === domain);
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
@@ -81,7 +83,7 @@ export default function DomainQA({ domain, onComplete, onClose }) {
       setPriorityReasoning(result.priority_reasoning);
     } catch (e) {
       console.error(e);
-      alert('Failed to generate summary: ' + e.message);
+      toast('Failed to generate summary: ' + e.message);
     }
     setSummarizing(false);
   }

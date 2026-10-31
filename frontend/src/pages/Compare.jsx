@@ -10,12 +10,16 @@ export default function Compare() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.partners.list().then(data => {
-      const withScores = data.filter(p => p.assessments?.length > 0);
-      setPartners(withScores);
-      setSelected(withScores.slice(0, 3).map(p => p.id));
-      setLoading(false);
-    });
+    api.partners.list()
+      .then(data => {
+        const withScores = data.filter(p => p.assessments?.length > 0);
+        setPartners(withScores);
+        setSelected(withScores.slice(0, 3).map(p => p.id));
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+      });
   }, []);
 
   function togglePartner(id) {

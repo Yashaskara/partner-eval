@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api.js';
+import { useToast } from '../components/Toast.jsx';
 
 export default function Admin() {
   const [tab, setTab] = useState('requests');
@@ -172,6 +173,7 @@ function UsersTab() {
 }
 
 function LimitsTab() {
+  const toast = useToast();
   const [users, setUsers] = useState([]);
   const [limits, setLimits] = useState({});
   const [loading, setLoading] = useState(true);
@@ -194,8 +196,8 @@ function LimitsTab() {
     if (!val || val < 0) return;
     try {
       await api.admin.setUserLimit(userId, val);
-      alert('Limit updated');
-    } catch (e) { alert('Failed: ' + e.message); }
+      toast('Limit updated', 'success');
+    } catch (e) { toast('Failed: ' + e.message); }
   }
 
   if (loading) return <p>Loading...</p>;
@@ -229,6 +231,7 @@ function LimitsTab() {
 }
 
 function RequestsTab({ onCountChange }) {
+  const toast = useToast();
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(null);
@@ -250,7 +253,7 @@ function RequestsTab({ onCountChange }) {
       if (action === 'approve') await api.admin.approveAccessRequest(id);
       else await api.admin.rejectAccessRequest(id);
       await load();
-    } catch (e) { alert('Failed: ' + e.message); }
+    } catch (e) { toast('Failed: ' + e.message); }
     setBusy(null);
   }
 
@@ -260,7 +263,7 @@ function RequestsTab({ onCountChange }) {
     try {
       await api.admin.deleteAccessRequest(id);
       await load();
-    } catch (e) { alert('Failed: ' + e.message); }
+    } catch (e) { toast('Failed: ' + e.message); }
     setBusy(null);
   }
 

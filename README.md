@@ -1,5 +1,7 @@
 # Anvaya
 
+![CI](https://github.com/Yashaskara/partner-eval/actions/workflows/ci.yml/badge.svg)
+
 A personal compatibility-evaluation dashboard for structured partner assessment. Built for the Indian arranged-marriage context, where you meet multiple people and need a systematic way to track, evaluate, and compare — beyond scattered notes and gut feeling.
 
 The app scores compatibility across **12 life domains** (lifestyle, career, family, conflict resolution, spirituality, finances, children, intimacy, hobbies, health, social life, relationship history) using LLM-powered analysis weighted by your own stated priorities.

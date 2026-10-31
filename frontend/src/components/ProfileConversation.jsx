@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../api.js';
 import { DOMAINS } from '../domains.js';
+import { useToast } from './Toast.jsx';
 
 export default function ProfileConversation({ onUpdated, onClose }) {
+  const toast = useToast();
   const [conversationId, setConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -66,7 +68,7 @@ export default function ProfileConversation({ onUpdated, onClose }) {
       setProposedUpdates(updates);
     } catch (e) {
       console.error(e);
-      alert('Failed to analyze conversation: ' + e.message);
+      toast('Failed to analyze conversation: ' + e.message);
     }
     setClassifying(false);
   }
